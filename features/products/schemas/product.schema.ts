@@ -4,7 +4,7 @@ import { z } from "zod"
 // Enums
 // ------------------------------------------------------------------
 
-export const productStatusEnum = z.enum(["active", "draft", "archived"])
+export const productStatusEnum = z.enum(["ACTIVE", "DRAFT", "ARCHIVED"])
 export type ProductStatus = z.infer<typeof productStatusEnum>
 
 // ------------------------------------------------------------------
@@ -24,6 +24,12 @@ const productBaseSchema = z.object({
         .min(3, "Name must be at least 3 characters")
         .max(255, "Name must be under 255 characters")
         .trim(),
+    slug: z
+        .string()
+        .min(3)
+        .max(255)
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format")
+        .optional(), // optional because we'll auto-generate it if not provided
 
     description: z
         .string()
@@ -46,7 +52,7 @@ const productBaseSchema = z.object({
         .string()
         .uuid("Invalid category"),
 
-    status: productStatusEnum.default("draft"),
+    status: productStatusEnum.default("DRAFT"),
 
     images: z
         .array(z.string().url("Each image must be a valid URL"))
@@ -101,3 +107,8 @@ export const productFilterSchema = z.object({
 })
 
 export type ProductFilters = z.infer<typeof productFilterSchema>
+export type ProductEditDefaults = Required<Omit<ProductUpdateInput, "description">> & {
+    description: string
+}
+// alias for any files importing productSchema directly
+export const productSchema = createProductSchema

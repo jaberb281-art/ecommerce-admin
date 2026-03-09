@@ -1,36 +1,59 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import apiClient from '@/lib/api-client';
+import { useState } from "react"
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const router = useRouter();
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [error, setError] = useState("")
+    const [isPending, setIsPending] = useState(false)
 
     const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
+        e.preventDefault()
+        console.log("handleLogin called", email, password)
+
+        if (!email || !password) {
+            setError("Please enter your email and password.")
+            return
+        }
+
+        setError("")
+        setIsPending(true)
 
         try {
-            const { data } = await apiClient.post('/auth/login', { email, password });
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+                redirect: "follow",
+            })
 
-            // Store the token from your NestJS response
-            localStorage.setItem('token', data.accessToken);
+            if (res.redirected) {
+                window.location.href = res.url
+                return
+            }
 
-            // Navigate to the dashboard home
-            router.push('/');
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+            const data = await res.json()
+            if (!res.ok) {
+                setError(data?.error || "Invalid email or password.")
+                return
+            }
+            await new Promise(resolve => setTimeout(resolve, 500))
+            window.location.replace("/admin/dashboard")
+        } catch {
+            setError("Something went wrong. Please try again.")
+        } finally {
+            setIsPending(false)
         }
-    };
+    }
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-50">
-            <form onSubmit={handleLogin} className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-200">
-                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">Tesla Admin</h1>
+            <form
+                onSubmit={handleLogin}
+                className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-200"
+            >
+                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">Admin</h1>
                 <p className="text-center text-slate-500 mb-8">Sign in to manage your store</p>
 
                 {error && (
@@ -41,37 +64,40 @@ export default function LoginPage() {
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-semibold mb-1 text-slate-700">Email Address</label>
+                        <label className="block text-sm font-semibold mb-1 text-slate-700">
+                            Email Address
+                        </label>
                         <input
                             type="email"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
-                            placeholder="admin@tesla.com"
+                            placeholder="admin@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold mb-1 text-slate-700">Password</label>
+                        <label className="block text-sm font-semibold mb-1 text-slate-700">
+                            Password
+                        </label>
                         <input
                             type="password"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-sm"
+                        disabled={isPending}
+                        className="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50"
                     >
-                        Sign In
+                        {isPending ? "Signing in..." : "Sign In"}
                     </button>
                 </div>
             </form>
         </div>
-    );
+    )
 }

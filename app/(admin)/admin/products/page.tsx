@@ -1,33 +1,15 @@
-// app/(admin)/admin/products/[id]/page.tsx
-import { notFound } from "next/navigation"
-import { getProduct } from "@/features/products/actions/products.actions"
-import { db } from "@/lib/db"
-import { ProductEditForm } from "@/features/products/components/product-edit-form"
+// app/(admin)/admin/products/page.tsx
+import { getProducts } from "@/features/products/queries/products.queries"
+import { ProductClient } from "@/features/products/components/product-client"
 
-interface Props {
-    params: { id: string }
-}
-
-export default async function EditProductPage({ params }: Props) {
-    const [product, categories] = await Promise.all([
-        getProduct(params.id),
-        db.category.findMany({
-            select: { id: true, name: true },
-            orderBy: { name: "asc" },
-        }),
-    ])
-
-    if (!product) notFound()
+export default async function ProductsPage() {
+    const products = await getProducts()
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6 p-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Edit Product</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Updating <span className="font-medium text-slate-700">{product.name}</span>
-                </p>
+        <div className="flex-col">
+            <div className="flex-1 space-y-4 p-8 pt-6">
+                <ProductClient data={products} />
             </div>
-            <ProductEditForm product={product} categories={categories} />
         </div>
     )
 }

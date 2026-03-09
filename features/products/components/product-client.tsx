@@ -2,7 +2,6 @@
 
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
-
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table/data-table"
 import { columns, ProductColumn } from "./product-columns"

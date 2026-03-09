@@ -1,31 +1,18 @@
-import { auth } from "@/lib/auth"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export default auth((req) => {
-    const { nextUrl, auth: session } = req
-    const isLoggedIn = !!session
-    const isAdminRoute = nextUrl.pathname.startsWith("/admin")
-    const isAuthRoute = nextUrl.pathname.startsWith("/login") ||
-        nextUrl.pathname.startsWith("/register")
+export function middleware(req: NextRequest) {
+    const allCookies = req.cookies.getAll()
+    const tokenCookie = allCookies.find(c => c.name === "access_token")
+    const token = tokenCookie?.value
+    const { pathname } = req.nextUrl
 
-    // Redirect unauthenticated users away from admin routes
-    if (isAdminRoute && !isLoggedIn) {
-        return NextResponse.redirect(new URL("/login", nextUrl))
-    }
-
-    // Block non-admin users even if authenticated
-    if (isAdminRoute && isLoggedIn && session.user.role !== "admin") {
-        return NextResponse.redirect(new URL("/login", nextUrl))
-    }
-
-    // Redirect logged-in admins away from auth pages
-    if (isAuthRoute && isLoggedIn && session.user.role === "admin") {
-        return NextResponse.redirect(new URL("/admin/dashboard", nextUrl))
+    if (pathname.startsWith("/admin") && !token) {
+        return NextResponse.redirect(new URL("/login", req.url))
     }
 
     return NextResponse.next()
-})
+}
 
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    matcher: ["/admin/:path*"],
 }

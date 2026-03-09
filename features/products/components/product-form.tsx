@@ -1,17 +1,15 @@
 "use client"
 
+import { uploadImage } from "@/features/products/actions/upload.actions"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTransition, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, X, ImagePlus } from "lucide-react"
+import { X, ImagePlus, Loader2 } from "lucide-react"
 import Image from "next/image"
-
-// ✅ Fixed import paths
 import { createProductSchema, type ProductInput } from "@/features/products/schemas/product.schema"
-import { createProduct } from "@/features/products/actions/products.actions"
-
+import { createProduct } from "@/features/products/actions/product.actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,11 +28,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { UploadButton } from "@/lib/uploadthing"
-
-// ------------------------------------------------------------------
-// Types
-// ------------------------------------------------------------------
 
 interface Category {
     id: string
@@ -45,25 +38,20 @@ interface ProductFormProps {
     categories: Category[]
 }
 
-// ------------------------------------------------------------------
-// Component
-// ------------------------------------------------------------------
-
 export function ProductForm({ categories }: ProductFormProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
     const [isUploading, setIsUploading] = useState(false)
 
     const form = useForm<ProductInput>({
-        // ✅ createProductSchema instead of productSchema
-        resolver: zodResolver(createProductSchema),
+        resolver: zodResolver(createProductSchema) as any,
         defaultValues: {
             name: "",
             description: "",
             price: 0,
             stock: 0,
             categoryId: "",
-            status: "draft",
+            status: "DRAFT",
             images: [],
         },
     })
@@ -78,11 +66,48 @@ export function ProductForm({ categories }: ProductFormProps) {
         )
     }
 
+    async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = e.target.files
+        console.log("handleImageUpload called, files:", files)
+        if (!files || files.length === 0) return
+
+        setIsUploading(true)
+
+        try {
+            const uploadedUrls: string[] = []
+
+            for (const file of Array.from(files)) {
+                const formData = new FormData()
+                formData.append("file", file)
+
+                console.log("Uploading:", file.name)
+                const result = await uploadImage(formData)
+                console.log("Result:", result)
+
+                if ("error" in result) {
+                    toast.error(result.error)
+                    return
+                }
+
+                uploadedUrls.push(result.url)
+            }
+
+            form.setValue("images", [...images, ...uploadedUrls], { shouldValidate: true })
+            toast.success("Images uploaded successfully")
+        } catch (err) {
+            console.error("Caught error:", err)
+            toast.error("Failed to upload images")
+        } finally {
+            setIsUploading(false)
+            e.target.value = ""
+        }
+    }
+
     function onSubmit(values: ProductInput) {
+        console.log("Submitting:", values)
         startTransition(async () => {
             const result = await createProduct(values)
 
-            // ✅ ActionResult discriminated union — check success flag
             if (!result.success) {
                 if (typeof result.error === "object") {
                     Object.entries(result.error).forEach(([field, messages]) => {
@@ -97,9 +122,8 @@ export function ProductForm({ categories }: ProductFormProps) {
             }
 
             toast.success("Product created successfully")
-            // ✅ Correct admin route
-            router.push("/admin/products")
             router.refresh()
+            router.push("/admin/products")
         })
     }
 
@@ -108,13 +132,11 @@ export function ProductForm({ categories }: ProductFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
-                {/* ── Basic Info ─────────────────────────────────────────── */}
+                {/* Basic Info */}
                 <section className="space-y-4">
                     <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                         Basic Info
                     </h2>
-
                     <FormField
                         control={form.control}
                         name="name"
@@ -128,7 +150,6 @@ export function ProductForm({ categories }: ProductFormProps) {
                             </FormItem>
                         )}
                     />
-
                     <FormField
                         control={form.control}
                         name="description"
@@ -148,34 +169,30 @@ export function ProductForm({ categories }: ProductFormProps) {
                     />
                 </section>
 
-                {/* ── Pricing & Inventory ────────────────────────────────── */}
+                {/* Pricing & Inventory */}
                 <section className="space-y-4">
                     <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                         Pricing & Inventory
                     </h2>
-
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField
                             control={form.control}
                             name="price"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Price ($)</FormLabel>
+                                    <FormLabel>Price</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             step="0.01"
-                                            min="0"
-                                            placeholder="0.00"
                                             {...field}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
                                         />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-
                         <FormField
                             control={form.control}
                             name="stock"
@@ -185,10 +202,8 @@ export function ProductForm({ categories }: ProductFormProps) {
                                     <FormControl>
                                         <Input
                                             type="number"
-                                            min="0"
-                                            placeholder="0"
                                             {...field}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -198,12 +213,11 @@ export function ProductForm({ categories }: ProductFormProps) {
                     </div>
                 </section>
 
-                {/* ── Organisation ───────────────────────────────────────── */}
+                {/* Organisation */}
                 <section className="space-y-4">
                     <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                         Organisation
                     </h2>
-
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField
                             control={form.control}
@@ -211,7 +225,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Category</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select a category" />
@@ -219,9 +233,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         </FormControl>
                                         <SelectContent>
                                             {categories.map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>
-                                                    {cat.name}
-                                                </SelectItem>
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -229,23 +241,22 @@ export function ProductForm({ categories }: ProductFormProps) {
                                 </FormItem>
                             )}
                         />
-
                         <FormField
                             control={form.control}
                             name="status"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="draft">Draft</SelectItem>
-                                            <SelectItem value="archived">Archived</SelectItem>
+                                            <SelectItem value="ACTIVE">Active</SelectItem>
+                                            <SelectItem value="DRAFT">Draft</SelectItem>
+                                            <SelectItem value="ARCHIVED">Archived</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -255,12 +266,9 @@ export function ProductForm({ categories }: ProductFormProps) {
                     </div>
                 </section>
 
-                {/* ── Images ─────────────────────────────────────────────── */}
+                {/* Images */}
                 <section className="space-y-4">
-                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                        Images
-                    </h2>
-
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Images</h2>
                     <FormField
                         control={form.control}
                         name="images"
@@ -272,22 +280,12 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         {images.length > 0 && (
                                             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                                                 {images.map((url) => (
-                                                    <div
-                                                        key={url}
-                                                        className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
-                                                    >
-                                                        <Image
-                                                            src={url}
-                                                            alt="Product image"
-                                                            fill
-                                                            className="object-cover"
-                                                            sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 16vw"
-                                                        />
+                                                    <div key={url} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                                                        <Image src={url} alt="Product" fill className="object-cover" />
                                                         <button
                                                             type="button"
                                                             onClick={() => removeImage(url)}
-                                                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                                                            aria-label="Remove image"
+                                                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100"
                                                         >
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -295,33 +293,25 @@ export function ProductForm({ categories }: ProductFormProps) {
                                                 ))}
                                             </div>
                                         )}
-
                                         {images.length < 8 && (
-                                            <div className="flex items-center gap-3 rounded-lg border border-dashed p-4">
-                                                <ImagePlus className="h-5 w-5 text-muted-foreground" />
-                                                <UploadButton
-                                                    endpoint="productImage"
-                                                    onUploadBegin={() => setIsUploading(true)}
-                                                    onClientUploadComplete={(res) => {
-                                                        setIsUploading(false)
-                                                        const urls = res.map((f) => f.url)
-                                                        form.setValue("images", [...images, ...urls], {
-                                                            shouldValidate: true,
-                                                        })
-                                                    }}
-                                                    onUploadError={(err) => {
-                                                        setIsUploading(false)
-                                                        toast.error(`Upload failed: ${err.message}`)
-                                                    }}
-                                                    appearance={{
-                                                        button: "bg-transparent text-sm text-primary underline-offset-4 hover:underline p-0 h-auto font-normal",
-                                                        allowedContent: "text-xs text-muted-foreground",
-                                                    }}
-                                                />
-                                                <span className="ml-auto text-xs text-muted-foreground">
-                                                    {images.length}/8
+                                            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-4 hover:bg-muted/50 transition-colors ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}>
+                                                {isUploading ? (
+                                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                                ) : (
+                                                    <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                                <span className="text-sm text-muted-foreground">
+                                                    {isUploading ? "Uploading..." : "Click to upload images"}
                                                 </span>
-                                            </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    multiple
+                                                    className="hidden"
+                                                    disabled={isUploading}
+                                                    onChange={handleImageUpload}
+                                                />
+                                            </label>
                                         )}
                                     </div>
                                 </FormControl>
@@ -331,30 +321,11 @@ export function ProductForm({ categories }: ProductFormProps) {
                     />
                 </section>
 
-                {/* ── Actions ────────────────────────────────────────────── */}
                 <div className="flex items-center gap-3 pt-2">
-                    <Button type="submit" disabled={isDisabled} className="min-w-[120px]">
-                        {isPending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Creating...
-                            </>
-                        ) : isUploading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Uploading...
-                            </>
-                        ) : (
-                            "Create Product"
-                        )}
+                    <Button type="submit" disabled={isDisabled}>
+                        {isPending ? "Creating..." : "Create Product"}
                     </Button>
-
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isDisabled}
-                        onClick={() => router.back()}
-                    >
+                    <Button type="button" variant="outline" onClick={() => router.back()}>
                         Cancel
                     </Button>
                 </div>

@@ -1,0 +1,43 @@
+export const runtime = "nodejs"
+import { NextRequest, NextResponse } from "next/server"
+import axios from "axios"
+
+const API_URL = process.env.API_URL || "http://localhost:3000"
+
+export async function POST(req: NextRequest) {
+    const token = req.cookies.get("access_token")?.value
+
+    if (!token) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const formData = await req.formData()
+
+    const file = formData.get("file") as File
+    if (!file) {
+        return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    }
+
+    const backendFormData = new FormData()
+    backendFormData.append("file", file)
+
+    try {
+        const { data } = await axios.post(
+            `${API_URL}/products/upload-image`,
+            backendFormData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data",
+                },
+            }
+        )
+
+        return NextResponse.json({ url: data.url })
+    } catch (err: any) {
+        return NextResponse.json(
+            { error: err.response?.data?.message || "Upload failed" },
+            { status: 500 }
+        )
+    }
+}
