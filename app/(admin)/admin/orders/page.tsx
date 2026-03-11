@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import axios from "axios"
 import { format } from "date-fns"
 import { OrderStatusSelect } from "@/features/orders/components/order-status-select"
+import { OrderDetailDrawer } from "@/features/orders/components/order-detail-drawer"
 
 const API_URL = process.env.API_URL || "http://localhost:3000"
 
@@ -23,7 +24,9 @@ async function getOrders() {
 
 const STATUS_STYLES: Record<string, string> = {
     PENDING: "bg-yellow-50 text-yellow-700",
+    PROCESSING: "bg-orange-50 text-orange-700",
     SHIPPED: "bg-blue-50 text-blue-700",
+    DELIVERED: "bg-indigo-50 text-indigo-700",
     COMPLETED: "bg-green-50 text-green-700",
     CANCELLED: "bg-red-50 text-red-700",
 }
@@ -48,12 +51,13 @@ export default async function OrdersPage() {
                             <th className="px-4 py-3 text-left font-medium text-slate-500">Total</th>
                             <th className="px-4 py-3 text-left font-medium text-slate-500">Status</th>
                             <th className="px-4 py-3 text-left font-medium text-slate-500">Date</th>
+                            <th className="px-4 py-3 text-left font-medium text-slate-500">Details</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {orders.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                                     No orders yet
                                 </td>
                             </tr>
@@ -82,6 +86,9 @@ export default async function OrdersPage() {
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">
                                         {format(new Date(order.createdAt), "MMM d, yyyy")}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <OrderDetailDrawer order={order} statusStyles={STATUS_STYLES} />
                                     </td>
                                 </tr>
                             ))
