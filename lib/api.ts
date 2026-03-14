@@ -9,22 +9,36 @@ export async function serverFetch<T>(
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
 
+  // 1. Guard: If no token, bounce to login
   if (!token) redirect('/admin/login');
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  // 2. Build Clean URL: Prevent URL joining errors (e.g., ...appapi/login)
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const fullUrl = `${baseUrl}${cleanPath}`;
+
+  // 3. Execute Fetch
+  const res = await fetch(fullUrl, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      Cookie: `token=${token}`,
+      // Pass the token in the Authorization header (NestJS standard) 
+      // AND as a cookie if your backend specifically requires it
+      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
-    cache: 'no-store', // always fresh — never use default cache for auth'd requests
+    cache: 'no-store',
   });
 
-  if (res.status === 401) redirect('/admin/login');
+  // 4. Handle Unauthorized
+  if (res.status === 401) {
+    redirect('/admin/login');
+  }
 
+  // 5. Handle Errors
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    const errorText = await res.text().catch(() => 'Unknown Error');
+    throw new Error(`API error: ${res.status} - ${errorText}`);
   }
 
   return res.json();
