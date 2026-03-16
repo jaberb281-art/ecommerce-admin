@@ -1,18 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
-// Swapped to NEXT_PUBLIC_API_URL to match your Railway Variables screenshot
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
 export async function POST(req: NextRequest) {
+    // Move inside the function to ensure it reads the latest environment state
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
     try {
         const { email, password } = await req.json();
 
-        // Ensure this path matches your backend (add /api/ if you have a global prefix)
-        const res = await fetch(`${API_URL}/api/auth/login`, {
+        if (!API_URL) {
+            console.error("[login route error]: NEXT_PUBLIC_API_URL is undefined");
+            return NextResponse.json(
+                { error: "Server configuration error. Please check environment variables." },
+                { status: 500 }
+            );
+        }
+
+        // We include /api/ because your NestJS backend uses a global prefix
+        const backendEndpoint = `${API_URL}/api/auth/login`;
+        console.log(`[login attempt]: Fetching from ${backendEndpoint}`);
+
+        const res = await fetch(backendEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
+            cache: 'no-store' // Ensure no stale responses
         });
 
         const data = await res.json().catch(() => ({}));
@@ -30,6 +42,7 @@ export async function POST(req: NextRequest) {
         const token = tokenMatch?.[1];
 
         if (!token) {
+            console.error("[login route error]: Backend did not return a token cookie");
             return NextResponse.json({ error: "No token received from backend" }, { status: 500 });
         }
 
@@ -43,6 +56,7 @@ export async function POST(req: NextRequest) {
             path: "/",
         };
 
+        // Set auth cookies
         response.cookies.set("access_token", token, cookieOptions);
         response.cookies.set("token", token, cookieOptions);
         response.cookies.set("user", JSON.stringify(data.user), {
@@ -50,14 +64,15 @@ export async function POST(req: NextRequest) {
             httpOnly: false,
         });
 
+        // Clear Next.js cache for admin pages
         revalidatePath("/admin", "layout");
         revalidatePath("/admin/dashboard");
 
         return response;
     } catch (err) {
-        console.error("[login route error]", err);
+        console.error("[login route error]:", err);
         return NextResponse.json(
-            { error: "Connection to backend failed." },
+            { error: "Could not connect to the backend server." },
             { status: 500 }
         );
     }
