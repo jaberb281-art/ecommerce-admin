@@ -20,6 +20,7 @@ export async function POST(req: Request) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, password }),
+            credentials: "include", // important for cookies
         });
 
         const data = await response.json();
@@ -31,7 +32,15 @@ export async function POST(req: Request) {
             );
         }
 
-        return NextResponse.json(data);
+        const res = NextResponse.json(data);
+
+        // forward backend cookies to browser
+        const cookies = response.headers.get("set-cookie");
+        if (cookies) {
+            res.headers.set("set-cookie", cookies);
+        }
+
+        return res;
 
     } catch (error) {
         console.error("LOGIN ROUTE ERROR:", error);
