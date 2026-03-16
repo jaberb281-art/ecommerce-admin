@@ -20,30 +20,36 @@ export default function LoginPage() {
         setIsPending(true)
 
         try {
-            // This calls your local Next.js API route at app/api/login/route.ts
-            const res = await fetch("/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-            })
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ email, password }),
+                }
+            )
 
             const data = await res.json()
 
             if (!res.ok) {
-                // Display the specific error from the backend if available
-                setError(data?.error || "Invalid email or password.")
+                setError(data?.message || "Invalid email or password.")
                 return
             }
 
-            // Successful login: The proxy has set the cookies.
-            // A short delay ensures cookies are persisted before redirection.
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Save JWT token if returned
+            if (data?.access_token) {
+                localStorage.setItem("token", data.access_token)
+            }
 
-            // Redirect to the dashboard
+            // Small delay before redirect
+            await new Promise((resolve) => setTimeout(resolve, 300))
+
             window.location.replace("/admin/dashboard")
 
         } catch (err) {
-            console.error("Login page error:", err)
+            console.error("Login error:", err)
             setError("Something went wrong. Please try again.")
         } finally {
             setIsPending(false)
@@ -56,8 +62,13 @@ export default function LoginPage() {
                 onSubmit={handleLogin}
                 className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-200"
             >
-                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">Admin</h1>
-                <p className="text-center text-slate-500 mb-8">Sign in to manage your store</p>
+                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">
+                    Admin
+                </h1>
+
+                <p className="text-center text-slate-500 mb-8">
+                    Sign in to manage your store
+                </p>
 
                 {error && (
                     <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-6 border border-red-100">
@@ -70,6 +81,7 @@ export default function LoginPage() {
                         <label className="block text-sm font-semibold mb-1 text-slate-700">
                             Email Address
                         </label>
+
                         <input
                             type="email"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
@@ -84,6 +96,7 @@ export default function LoginPage() {
                         <label className="block text-sm font-semibold mb-1 text-slate-700">
                             Password
                         </label>
+
                         <input
                             type="password"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
