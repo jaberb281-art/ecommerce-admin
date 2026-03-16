@@ -40,6 +40,8 @@ export default function LoginPage() {
 
             // Persist auth in cookies so middleware + server components see it
             document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Secure`
+            // Legacy name some server utilities expect
+            document.cookie = `token=${data.access_token}; Path=/; SameSite=Lax; Secure`
             document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; Path=/; SameSite=Lax; Secure`
 
             // redirect to dashboard
