@@ -3,7 +3,10 @@ import axios from "axios"
 import { ProductColumn } from "../components/product-columns"
 import { format } from "date-fns"
 
-const API_URL = process.env.API_URL || "http://localhost:3000"
+// Normalize backend base URL and ensure /api prefix
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 export const getProducts = async (): Promise<ProductColumn[]> => {
     const cookieStore = await cookies()

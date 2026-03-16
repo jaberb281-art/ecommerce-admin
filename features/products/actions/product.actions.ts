@@ -10,7 +10,10 @@ import {
     type ProductUpdateInput,
 } from "@/features/products/schemas/product.schema"
 
-const API_URL = process.env.API_URL || "http://localhost:3000"
+// Normalize backend base URL and ensure /api prefix
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 export type ActionResult<T = void> =
     | { success: true; data: T }
