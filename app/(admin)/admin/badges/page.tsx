@@ -5,7 +5,9 @@ import Image from "next/image"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { DeleteBadgeButton } from "@/features/badges/components/delete-badge-button"
 
-const API_URL = process.env.API_URL || "http://localhost:3000"
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 export const dynamic = "force-dynamic"
 

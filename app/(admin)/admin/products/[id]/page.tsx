@@ -5,7 +5,9 @@ import { cookies } from "next/headers"
 import axios from "axios"
 import { ProductEditForm } from "@/features/products/components/product-edit-form"
 
-const API_URL = process.env.API_URL || "http://localhost:3000"
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 interface Props {
     params: Promise<{ id: string }>

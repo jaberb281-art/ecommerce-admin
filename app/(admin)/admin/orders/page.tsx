@@ -5,7 +5,9 @@ import { format } from "date-fns"
 import { OrderStatusSelect } from "@/features/orders/components/order-status-select"
 import { OrderDetailDrawer } from "@/features/orders/components/order-detail-drawer"
 
-const API_URL = process.env.API_URL || "http://localhost:3000"
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 export const dynamic = "force-dynamic"
 
