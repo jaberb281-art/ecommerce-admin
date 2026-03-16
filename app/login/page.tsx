@@ -20,16 +20,14 @@ export default function LoginPage() {
         setIsPending(true)
 
         try {
-            const res = await fetch(
-                "https://ecommerce-backend-production-44ff.up.railway.app/api/auth/login",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ email, password }),
-                }
-            )
+            // Call our own Next.js API route, which proxies to the backend.
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password }),
+            })
 
             const data = await res.json()
 
