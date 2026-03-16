@@ -2,51 +2,38 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
     try {
-        const { email, password } = await req.json();
+        const body = await req.json();
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-        if (!API_URL) {
-            console.error("NEXT_PUBLIC_API_URL is missing");
-            return NextResponse.json(
-                { error: "API URL not configured" },
-                { status: 500 }
-            );
-        }
+        console.log("API_URL:", API_URL);
+        console.log("Login body:", body);
 
         const response = await fetch(`${API_URL}/api/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ email, password }),
-            credentials: "include", // important for cookies
+            body: JSON.stringify(body),
         });
 
-        const data = await response.json();
+        const text = await response.text();
 
-        if (!response.ok) {
-            return NextResponse.json(
-                { error: data?.message || "Login failed" },
-                { status: response.status }
-            );
-        }
+        console.log("Backend response status:", response.status);
+        console.log("Backend response body:", text);
 
-        const res = NextResponse.json(data);
-
-        // forward backend cookies to browser
-        const cookies = response.headers.get("set-cookie");
-        if (cookies) {
-            res.headers.set("set-cookie", cookies);
-        }
-
-        return res;
+        return new NextResponse(text, {
+            status: response.status,
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
 
     } catch (error) {
         console.error("LOGIN ROUTE ERROR:", error);
 
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: "Proxy login failed", details: String(error) },
             { status: 500 }
         );
     }
