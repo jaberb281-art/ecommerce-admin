@@ -10,7 +10,6 @@ export default function LoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log("handleLogin called", email, password)
 
         if (!email || !password) {
             setError("Please enter your email and password.")
@@ -21,26 +20,30 @@ export default function LoginPage() {
         setIsPending(true)
 
         try {
+            // This calls your local Next.js API route at app/api/login/route.ts
             const res = await fetch("/api/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
-                redirect: "follow",
             })
 
-            if (res.redirected) {
-                window.location.href = res.url
-                return
-            }
-
             const data = await res.json()
+
             if (!res.ok) {
+                // Display the specific error from the backend if available
                 setError(data?.error || "Invalid email or password.")
                 return
             }
+
+            // Successful login: The proxy has set the cookies.
+            // A short delay ensures cookies are persisted before redirection.
             await new Promise(resolve => setTimeout(resolve, 500))
+
+            // Redirect to the dashboard
             window.location.replace("/admin/dashboard")
-        } catch {
+
+        } catch (err) {
+            console.error("Login page error:", err)
             setError("Something went wrong. Please try again.")
         } finally {
             setIsPending(false)
@@ -73,6 +76,7 @@ export default function LoginPage() {
                             placeholder="admin@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            required
                         />
                     </div>
 
@@ -86,6 +90,7 @@ export default function LoginPage() {
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            required
                         />
                     </div>
 
