@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 
+const API_URL =
+  (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/$/, "")
+
 export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -20,8 +23,7 @@ export default function LoginPage() {
         setIsPending(true)
 
         try {
-            // Call our own Next.js API route, which proxies to the backend.
-            const res = await fetch("/api/login", {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
