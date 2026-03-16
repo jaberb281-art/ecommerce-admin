@@ -4,31 +4,39 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-        console.log("API_URL:", API_URL);
         console.log("Login body:", body);
 
-        const response = await fetch(`${API_URL}/api/auth/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-        });
+        const response = await fetch(
+            "https://ecommerce-backend-production-44ff.up.railway.app/api/auth/login",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify(body),
+            }
+        );
 
-        const text = await response.text();
+        const data = await response.text();
 
         console.log("Backend response status:", response.status);
-        console.log("Backend response body:", text);
+        console.log("Backend response body:", data);
 
-        return new NextResponse(text, {
+        const nextResponse = new NextResponse(data, {
             status: response.status,
             headers: {
                 "Content-Type": "application/json",
             },
         });
 
+        // forward auth cookie from backend
+        const setCookie = response.headers.get("set-cookie");
+        if (setCookie) {
+            nextResponse.headers.set("set-cookie", setCookie);
+        }
+
+        return nextResponse;
     } catch (error) {
         console.error("LOGIN ROUTE ERROR:", error);
 

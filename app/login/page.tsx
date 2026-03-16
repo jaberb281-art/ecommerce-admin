@@ -21,7 +21,7 @@ export default function LoginPage() {
 
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+                "https://ecommerce-backend-production-44ff.up.railway.app/api/auth/login",
                 {
                     method: "POST",
                     headers: {
@@ -38,18 +38,13 @@ export default function LoginPage() {
                 return
             }
 
-            // Save JWT token if returned
-            if (data?.access_token) {
-                localStorage.setItem("token", data.access_token)
-            }
+            // save JWT token
+            localStorage.setItem("token", data.access_token)
 
-            // Small delay before redirect
-            await new Promise((resolve) => setTimeout(resolve, 300))
-
+            // redirect to dashboard
             window.location.replace("/admin/dashboard")
 
         } catch (err) {
-            console.error("Login error:", err)
             setError("Something went wrong. Please try again.")
         } finally {
             setIsPending(false)
@@ -62,13 +57,8 @@ export default function LoginPage() {
                 onSubmit={handleLogin}
                 className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-200"
             >
-                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">
-                    Admin
-                </h1>
-
-                <p className="text-center text-slate-500 mb-8">
-                    Sign in to manage your store
-                </p>
+                <h1 className="text-3xl font-bold mb-2 text-center text-slate-900">Admin</h1>
+                <p className="text-center text-slate-500 mb-8">Sign in to manage your store</p>
 
                 {error && (
                     <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-6 border border-red-100">
@@ -81,14 +71,12 @@ export default function LoginPage() {
                         <label className="block text-sm font-semibold mb-1 text-slate-700">
                             Email Address
                         </label>
-
                         <input
                             type="email"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
                             placeholder="admin@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
                         />
                     </div>
 
@@ -96,14 +84,12 @@ export default function LoginPage() {
                         <label className="block text-sm font-semibold mb-1 text-slate-700">
                             Password
                         </label>
-
                         <input
                             type="password"
                             className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
                         />
                     </div>
 
