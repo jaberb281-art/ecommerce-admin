@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Zap } from "lucide-react"
+import { Zap, Store } from "lucide-react"
 import {
     LayoutDashboard,
     Package,
@@ -26,8 +26,7 @@ const NAV_ITEMS = [
     { href: "/admin/badges", label: "Badges", icon: Award },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/admin/events", label: "Events", icon: Zap },
-
-
+    { href: "/admin/storefront", label: "Storefront", icon: Store },
 ]
 
 export default async function AdminLayout({
