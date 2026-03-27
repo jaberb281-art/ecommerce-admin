@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { updateShopSettings } from "@/features/storefront/actions/storefront.actions"
-import { Save, ImageIcon, Type, Megaphone, ExternalLink, CheckCircle2, AlertCircle, Store, Plus, Trash2, Radio } from "lucide-react"
+import { Save, ImageIcon, Type, Megaphone, ExternalLink, CheckCircle2, AlertCircle, Store } from "lucide-react"
 
 function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
     return (
@@ -45,7 +45,6 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
         bannerText: initialData?.bannerText ?? "",
         bannerBgColor: initialData?.bannerBgColor ?? "#fff7ed",
         bannerTextColor: initialData?.bannerTextColor ?? "#92400e",
-        announcementSlides: initialData?.announcementSlides ?? [{ text: "", link: "", linkLabel: "" }],
     })
 
     const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
@@ -217,74 +216,6 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
                         </div>
                     </div>
                 )}
-            </Section>
-
-
-            {/* ── Announcement Bar Slides ──────────────── */}
-            <Section icon={Radio} title="Announcement Bar Slides">
-                <p className="text-xs text-slate-400">Add up to 4 rotating messages shown above the navbar. Leave empty to hide the bar.</p>
-                <div className="space-y-3">
-                    {form.announcementSlides.map((slide: any, i: number) => (
-                        <div key={i} className="grid grid-cols-1 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-5">{i + 1}</span>
-                                <input
-                                    type="text"
-                                    value={slide.text}
-                                    onChange={e => {
-                                        const slides = [...form.announcementSlides]
-                                        slides[i] = { ...slides[i], text: e.target.value }
-                                        set("announcementSlides", slides)
-                                    }}
-                                    placeholder="🎉 Free shipping on orders over 10 BHD!"
-                                    className={inputCls + " flex-1"}
-                                />
-                                {form.announcementSlides.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => set("announcementSlides", form.announcementSlides.filter((_: any, j: number) => j !== i))}
-                                        className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 pl-7">
-                                <input
-                                    type="text"
-                                    value={slide.linkLabel}
-                                    onChange={e => {
-                                        const slides = [...form.announcementSlides]
-                                        slides[i] = { ...slides[i], linkLabel: e.target.value }
-                                        set("announcementSlides", slides)
-                                    }}
-                                    placeholder="Link label (e.g. Shop Now)"
-                                    className={inputCls}
-                                />
-                                <input
-                                    type="text"
-                                    value={slide.link}
-                                    onChange={e => {
-                                        const slides = [...form.announcementSlides]
-                                        slides[i] = { ...slides[i], link: e.target.value }
-                                        set("announcementSlides", slides)
-                                    }}
-                                    placeholder="URL (e.g. /shop)"
-                                    className={inputCls}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                    {form.announcementSlides.length < 4 && (
-                        <button
-                            type="button"
-                            onClick={() => set("announcementSlides", [...form.announcementSlides, { text: "", link: "", linkLabel: "" }])}
-                            className="flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-                        >
-                            <Plus size={14} /> Add slide
-                        </button>
-                    )}
-                </div>
             </Section>
 
             {/* ── Save ──────────────────────────────────── */}

@@ -29,20 +29,6 @@ const NAV_ITEMS = [
     { href: "/admin/storefront", label: "Storefront", icon: Store },
 ]
 
-function parseUserCookie(userCookie?: string) {
-    if (!userCookie) return null
-
-    try {
-        return JSON.parse(decodeURIComponent(userCookie))
-    } catch {
-        try {
-            return JSON.parse(userCookie)
-        } catch {
-            return null
-        }
-    }
-}
-
 export default async function AdminLayout({
     children,
 }: {
@@ -54,7 +40,7 @@ export default async function AdminLayout({
 
     if (!token) redirect("/login")
 
-    const user = parseUserCookie(userCookie)
+    const user = userCookie ? JSON.parse(userCookie) : null
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50">

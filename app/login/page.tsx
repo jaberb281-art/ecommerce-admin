@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 
+const API_URL =
+  (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/$/, "")
+
 export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -20,7 +23,7 @@ export default function LoginPage() {
         setIsPending(true)
 
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -34,6 +37,12 @@ export default function LoginPage() {
                 setError(data?.message || "Invalid email or password.")
                 return
             }
+
+            // Persist auth in cookies so middleware + server components see it
+            document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Secure`
+            // Legacy name some server utilities expect
+            document.cookie = `token=${data.access_token}; Path=/; SameSite=Lax; Secure`
+            document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; Path=/; SameSite=Lax; Secure`
 
             // redirect to dashboard
             window.location.replace("/admin/dashboard")

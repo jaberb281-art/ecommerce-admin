@@ -1,15 +1,13 @@
 export const runtime = "nodejs"
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
 
 const API_BASE =
     (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
 const API_URL = `${API_BASE}/api`
 
-export async function POST(req: Request) {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("access_token")?.value || cookieStore.get("token")?.value
+export async function POST(req: NextRequest) {
+    const token = req.cookies.get("access_token")?.value
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
