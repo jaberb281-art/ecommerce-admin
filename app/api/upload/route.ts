@@ -7,7 +7,7 @@ const API_BASE =
 const API_URL = `${API_BASE}/api`
 
 export async function POST(req: NextRequest) {
-    const token = req.cookies.get("access_token")?.value
+    const token = req.cookies.get("access_token")?.value || req.cookies.get("token")?.value
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
