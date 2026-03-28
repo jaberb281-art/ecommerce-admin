@@ -1,246 +1,302 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { updateShopSettings } from "@/features/storefront/actions/storefront.actions"
-import { Save, ImageIcon, Type, Megaphone, ExternalLink, CheckCircle2, AlertCircle, Store } from "lucide-react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { ShoppingBag, Bell, Search, MapPin, Menu, X, LogOut, Loader2 } from "lucide-react"
+import { api, authApi } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import SearchOverlay from "@/components/shop/search-overlay"
 
-function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
-    return (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
-                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Icon size={15} className="text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-sm text-slate-900">{title}</h3>
-            </div>
-            <div className="p-6 space-y-5">{children}</div>
-        </div>
-    )
+function getInitials(name: string) {
+    return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "U"
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</label>
-            {hint && <p className="text-xs text-slate-400">{hint}</p>}
-            {children}
-        </div>
-    )
+const NAV_LINKS = [
+    { label: "Shop", href: "/shop" },
+    { label: "Categories", href: "/categories" },
+    { label: "Events", href: "/events" },
+    { label: "About Us", href: "/about" },
+]
+
+interface StoreHeaderProps {
+    onOpenCart: () => void
 }
 
-const inputCls = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 transition-all"
+export default function StoreHeader({ onOpenCart }: StoreHeaderProps) {
+    const router = useRouter()
+    const pathname = usePathname()
+    const queryClient = useQueryClient()
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [searchOpen, setSearchOpen] = useState(false)
+    const [isScrolled, setIsScrolled] = useState(false)
 
-export default function StorefrontSettingsForm({ initialData }: { initialData: any }) {
-    const [isPending, startTransition] = useTransition()
-    const [status, setStatus] = useState<"idle" | "saved" | "error">("idle")
-    const [errorMsg, setErrorMsg] = useState("")
+    useEffect(() => {
+        const handleScroll = () => setIsScrolled(window.scrollY > 20)
+        window.addEventListener("scroll", handleScroll)
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
 
-    const [form, setForm] = useState({
-        heroImageUrl: initialData?.heroImageUrl ?? "",
-        heroTitle: initialData?.heroTitle ?? "",
-        heroSubtitle: initialData?.heroSubtitle ?? "",
-        heroButtonText: initialData?.heroButtonText ?? "",
-        heroButtonLink: initialData?.heroButtonLink ?? "",
-        isBannerVisible: initialData?.isBannerVisible ?? false,
-        bannerText: initialData?.bannerText ?? "",
-        bannerBgColor: initialData?.bannerBgColor ?? "#fff7ed",
-        bannerTextColor: initialData?.bannerTextColor ?? "#92400e",
+    // Fetch Cart Data
+    const { data: cart } = useQuery({
+        queryKey: ["cart"],
+        queryFn: async () => {
+            const { data } = await api.get("/cart")
+            return data
+        },
+        retry: false,
     })
 
-    const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
+    // Fetch Unread Notifications
+    const { data: unreadCount } = useQuery({
+        queryKey: ["unread-count"],
+        queryFn: async () => {
+            const { data } = await api.get("/notifications/unread-count")
+            return data
+        },
+        retry: false,
+    })
 
-    function handleSave() {
-        startTransition(async () => {
-            const result = await updateShopSettings(form)
-            if (result.success) {
-                setStatus("saved")
-                setTimeout(() => setStatus("idle"), 2500)
-            } else {
-                setErrorMsg(typeof result.error === "string" ? result.error : "Save failed")
-                setStatus("error")
-                setTimeout(() => setStatus("idle"), 3000)
-            }
-        })
+    // Fetch User Session from our new Proxy Route
+    const { data: user, isLoading: userLoading } = useQuery({
+        queryKey: ["me"],
+        queryFn: async () => {
+            const { data } = await api.get("/auth/me")
+            return data
+        },
+        retry: false,
+        staleTime: 5 * 60 * 1000, // Keep session valid for 5 mins
+    })
+
+    async function handleLogout() {
+        try {
+            // This calls your /api/auth/logout route to clear cookies
+            await authApi.post("/auth/logout")
+            queryClient.clear()
+            router.push("/")
+            router.refresh()
+        } catch (error) {
+            console.error("Logout failed", error)
+        }
     }
 
+    const cartCount = cart?.items?.length ?? 0
+    const notifications = unreadCount?.count ?? 0
+
     return (
-        <div className="space-y-6">
+        <>
+            <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-            {/* ── Hero Image ─────────────────────────────── */}
-            <Section icon={ImageIcon} title="Hero Image">
-                <Field
-                    label="Image URL"
-                    hint="Paste a direct image URL from Cloudinary, Imgur, or any CDN. Recommended: 1600×900px."
+            <header className="w-full transition-all duration-500 ease-in-out">
+                <div
+                    className={cn(
+                        "mx-auto max-w-7xl transition-all duration-500 rounded-full border flex items-center gap-4",
+                        isScrolled
+                            ? "bg-background/80 backdrop-blur-xl border-border py-2.5 px-6 shadow-sm"
+                            : "bg-transparent border-transparent py-4 px-4"
+                    )}
                 >
-                    <input
-                        type="url"
-                        value={form.heroImageUrl}
-                        onChange={e => set("heroImageUrl", e.target.value)}
-                        placeholder="https://res.cloudinary.com/your-cloud/image/upload/your-image.jpg"
-                        className={inputCls}
-                    />
-                </Field>
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-2 shrink-0 group">
+                        <span className="text-2xl font-bold text-primary text-gray-400 mt-1 transition-transform duration-300 group-hover:scale-110">
+                            شبش
+                        </span>
+                        <span className="hidden lg:block font-display text-xl font-bold tracking-tighter text-foreground">
+                            SHBASH<span className="text-primary italic">.</span>
+                        </span>
+                    </Link>
 
-                {form.heroImageUrl && (
-                    <div className="relative h-44 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={form.heroImageUrl}
-                            alt="Hero preview"
-                            className="absolute inset-0 w-full h-full object-cover"
-                            onError={e => (e.currentTarget.style.display = "none")}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-end p-4">
-                            <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Preview</span>
-                        </div>
+                    {/* Location Pill */}
+                    <div className="hidden xl:flex items-center gap-1.5 bg-muted border border-border rounded-full px-3 py-1.5">
+                        <MapPin className="h-3 w-3 text-primary" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-gray-400 mt-1">Bahrain</span>
                     </div>
-                )}
-            </Section>
 
-            {/* ── Hero Text & CTA ────────────────────────── */}
-            <Section icon={Type} title="Hero Text & Button">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Headline">
-                        <input
-                            type="text"
-                            value={form.heroTitle}
-                            onChange={e => set("heroTitle", e.target.value)}
-                            placeholder="Own Your Identity."
-                            className={inputCls}
-                        />
-                    </Field>
-                    <Field label="Subtitle">
-                        <input
-                            type="text"
-                            value={form.heroSubtitle}
-                            onChange={e => set("heroSubtitle", e.target.value)}
-                            placeholder="Handcrafted cases. Limited drops."
-                            className={inputCls}
-                        />
-                    </Field>
-                    <Field label="Button Label">
-                        <input
-                            type="text"
-                            value={form.heroButtonText}
-                            onChange={e => set("heroButtonText", e.target.value)}
-                            placeholder="Shop Now"
-                            className={inputCls}
-                        />
-                    </Field>
-                    <Field label="Button Link">
-                        <div className="relative">
-                            <ExternalLink size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={form.heroButtonLink}
-                                onChange={e => set("heroButtonLink", e.target.value)}
-                                placeholder="/shop"
-                                className={`${inputCls} pl-9`}
-                            />
-                        </div>
-                    </Field>
-                </div>
-            </Section>
+                    {/* Desktop Nav */}
+                    <nav className="hidden md:flex items-center gap-2 ml-4">
+                        {NAV_LINKS.map(({ label, href }) => {
+                            const active = pathname === href || (href !== "/" && pathname.startsWith(href))
+                            return (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    className={cn(
+                                        "px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] transition-all duration-300 rounded-full",
+                                        active
+                                            ? "text-primary bg-primary/5"
+                                            : "text-muted-foreground hover:text-primary hover:bg-muted"
+                                    )}
+                                >
+                                    {label}
+                                </Link>
+                            )
+                        })}
+                    </nav>
 
-            {/* ── Announcement Banner ────────────────────── */}
-            <Section icon={Megaphone} title="Announcement Banner">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-semibold text-slate-800">Show banner on shop page</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Appears above the product grid</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => set("isBannerVisible", !form.isBannerVisible)}
-                        className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${form.isBannerVisible ? "bg-emerald-500" : "bg-slate-200"
-                            }`}
-                    >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${form.isBannerVisible ? "translate-x-5" : "translate-x-0.5"
-                            }`} />
-                    </button>
-                </div>
-
-                {form.isBannerVisible && (
-                    <div className="space-y-4 pt-2 border-t border-slate-100">
-                        <Field label="Banner Text">
-                            <input
-                                type="text"
-                                value={form.bannerText}
-                                onChange={e => set("bannerText", e.target.value)}
-                                placeholder="🔥 Only 3 left! New designs dropping in 12h 👀"
-                                className={inputCls}
-                            />
-                        </Field>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Background Color">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        value={form.bannerBgColor}
-                                        onChange={e => set("bannerBgColor", e.target.value)}
-                                        className="h-10 w-12 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-1 shrink-0"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={form.bannerBgColor}
-                                        onChange={e => set("bannerBgColor", e.target.value)}
-                                        className={`${inputCls} font-mono text-xs`}
-                                    />
-                                </div>
-                            </Field>
-                            <Field label="Text Color">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        value={form.bannerTextColor}
-                                        onChange={e => set("bannerTextColor", e.target.value)}
-                                        className="h-10 w-12 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-1 shrink-0"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={form.bannerTextColor}
-                                        onChange={e => set("bannerTextColor", e.target.value)}
-                                        className={`${inputCls} font-mono text-xs`}
-                                    />
-                                </div>
-                            </Field>
-                        </div>
-
-                        {/* Live banner preview */}
-                        <div
-                            className="w-full py-2.5 px-6 rounded-xl flex items-center justify-center text-sm font-bold"
-                            style={{ backgroundColor: form.bannerBgColor, color: form.bannerTextColor }}
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 md:gap-3 ml-auto">
+                        <button
+                            onClick={() => setSearchOpen(true)}
+                            className="hidden md:flex items-center gap-3 w-40 lg:w-64 rounded-full bg-muted border border-border px-4 py-2 text-xs text-muted-foreground hover:border-primary/40 transition-all duration-300 group"
                         >
-                            {form.bannerText || "Your banner will appear here"}
+                            <Search className="h-3.5 w-3.5 group-hover:text-primary transition-colors" />
+                            <span>Search...</span>
+                        </button>
+
+                        <Link href="/notifications" className="relative p-2 text-muted-foreground hover:text-primary transition-colors">
+                            <Bell size={20} strokeWidth={2} />
+                            {notifications > 0 && (
+                                <span className="absolute top-1 right-1 h-4 w-4 bg-primary text-[9px] font-black text-primary-foreground rounded-full flex items-center justify-center border-2 border-background">
+                                    {notifications > 9 ? "9+" : notifications}
+                                </span>
+                            )}
+                        </Link>
+
+                        <button
+                            onClick={onOpenCart}
+                            className="relative p-2 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                            <ShoppingBag size={20} strokeWidth={2} />
+                            {cartCount > 0 && (
+                                <span className="absolute top-1 right-1 h-4 w-4 bg-primary text-[9px] font-black text-primary-foreground rounded-full flex items-center justify-center border-2 border-background">
+                                    {cartCount > 9 ? "9+" : cartCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* User Profile / Login */}
+                        <div className="flex items-center gap-2 ml-2">
+                            {userLoading ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            ) : user ? (
+                                <div className="flex items-center gap-3">
+                                    <Link
+                                        href="/profile"
+                                        className="h-9 w-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary/20 hover:scale-110 transition-transform bg-primary"
+                                    >
+                                        {getInitials(user.name || user.email)}
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="hidden lg:block text-muted-foreground hover:text-destructive transition-colors"
+                                        title="Logout"
+                                    >
+                                        <LogOut size={18} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className="rounded-full bg-primary px-6 py-2 text-[11px] font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90 transition-all shadow-sm"
+                                >
+                                    Login
+                                </Link>
+                            )}
                         </div>
+
+                        <button
+                            className="md:hidden p-2 text-foreground ml-1"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            <div className="text-2xl font-bold tracking-widest">
+                                •••
+                            </div>                        </button>
                     </div>
-                )}
-            </Section>
+                </div>
+            </header>
 
-            {/* ── Save ──────────────────────────────────── */}
-            <div className="flex items-center justify-end gap-3 pt-2 pb-8">
-                {status === "saved" && (
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-                        <CheckCircle2 size={15} /> Saved successfully
-                    </span>
+            {/* Mobile Menu — full screen editorial */}
+            <div
+                className={cn(
+                    "fixed inset-0 z-[50] bg-background flex flex-col transition-all duration-500 md:hidden",
+                    mobileMenuOpen
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
                 )}
-                {status === "error" && (
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-red-500">
-                        <AlertCircle size={15} /> {errorMsg || "Save failed"}
-                    </span>
-                )}
-                <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isPending}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-                >
-                    <Save size={15} />
-                    {isPending ? "Saving…" : "Save Changes"}
-                </button>
+            >
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-6 h-16 border-b border-border shrink-0">
+                    <Link href="/" onClick={() => setMobileMenuOpen(false)} className="text-xl font-bold tracking-tighter text-foreground">
+                        شبش
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => { setSearchOpen(true); setMobileMenuOpen(false) }} className="p-2 text-muted-foreground">
+                            <Search size={20} />
+                        </button>
+                        <button onClick={onOpenCart} className="relative p-2 text-muted-foreground">
+                            <ShoppingBag size={20} />
+                            {cartCount > 0 && (
+                                <span className="absolute top-1 right-1 h-4 w-4 bg-foreground text-[9px] font-black text-background rounded-full flex items-center justify-center">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="p-2 text-muted-foreground"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Nav links */}
+                <nav className="flex-1 overflow-y-auto px-6">
+                    {NAV_LINKS.map(({ label, href }) => {
+                        const active = pathname === href || (href !== "/" && pathname.startsWith(href))
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={cn(
+                                    "flex items-center justify-between py-6 border-b border-border group transition-colors",
+                                    active ? "text-primary" : "text-foreground"
+                                )}
+                            >
+                                <span className="text-3xl font-bold tracking-tight">{label}</span>
+                                <span className="text-muted-foreground group-hover:translate-x-1 transition-transform text-xl">→</span>
+                            </Link>
+                        )
+                    })}
+                </nav>
+
+                {/* Bottom: user section */}
+                <div className="px-6 pb-10 pt-6 border-t border-border shrink-0 space-y-3">
+                    {user ? (
+                        <div className="flex items-center justify-between">
+                            <Link
+                                href="/profile"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center gap-3"
+                            >
+                                <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
+                                    {getInitials(user.name || user.email)}
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-foreground">{user.name ?? user.email}</p>
+                                    <p className="text-xs text-muted-foreground">View Profile</p>
+                                </div>
+                            </Link>
+                            <button
+                                onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
+                                className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
+                    ) : (
+                        <Link
+                            href="/login"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block text-center py-4 rounded-full bg-foreground text-background font-bold text-sm tracking-widest uppercase"
+                        >
+                            Login
+                        </Link>
+                    )}
+                </div>
             </div>
-
-        </div>
+        </>
     )
 }
