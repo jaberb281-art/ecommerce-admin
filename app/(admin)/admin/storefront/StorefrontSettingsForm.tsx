@@ -46,6 +46,8 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
         bannerBgColor: initialData?.bannerBgColor ?? "#fff7ed",
         bannerTextColor: initialData?.bannerTextColor ?? "#92400e",
         announcementSlides: initialData?.announcementSlides ?? [{ text: "", link: "", linkLabel: "" }],
+        announcementBgColor: initialData?.announcementBgColor ?? "#18181b",
+        announcementTextColor: initialData?.announcementTextColor ?? "#ffffff",
     })
 
     const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
@@ -275,6 +277,55 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
                             </div>
                         </div>
                     ))}
+                    {/* Bar colors */}
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                        <Field label="Bar Background Color">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={form.announcementBgColor}
+                                    onChange={e => set("announcementBgColor", e.target.value)}
+                                    className="h-10 w-12 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-1 shrink-0"
+                                />
+                                <input
+                                    type="text"
+                                    value={form.announcementBgColor}
+                                    onChange={e => set("announcementBgColor", e.target.value)}
+                                    className={inputCls + " font-mono text-xs"}
+                                />
+                            </div>
+                        </Field>
+                        <Field label="Bar Text Color">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={form.announcementTextColor}
+                                    onChange={e => set("announcementTextColor", e.target.value)}
+                                    className="h-10 w-12 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-1 shrink-0"
+                                />
+                                <input
+                                    type="text"
+                                    value={form.announcementTextColor}
+                                    onChange={e => set("announcementTextColor", e.target.value)}
+                                    className={inputCls + " font-mono text-xs"}
+                                />
+                            </div>
+                        </Field>
+                    </div>
+
+                    {/* Live preview */}
+                    <div
+                        className="w-full py-2 px-4 rounded-xl flex items-center justify-center text-sm font-medium gap-2"
+                        style={{ backgroundColor: form.announcementBgColor, color: form.announcementTextColor }}
+                    >
+                        <span>←</span>
+                        <span>{form.announcementSlides[0]?.text || "Your announcement text here"}</span>
+                        {form.announcementSlides[0]?.linkLabel && (
+                            <span className="font-black underline">{form.announcementSlides[0].linkLabel}</span>
+                        )}
+                        <span>→</span>
+                    </div>
+
                     {form.announcementSlides.length < 4 && (
                         <button
                             type="button"
