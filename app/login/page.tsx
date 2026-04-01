@@ -51,12 +51,10 @@ export default function LoginPage() {
         }
     }
 
-    // --- NEW GITHUB HANDLER ---
     const handleGitHubLogin = () => {
-        // This sends the user to your NestJS backend github route
-        window.location.href = `${API_URL}/auth/github`;
+        // We add /api here because your NestJS main.ts has setGlobalPrefix('api')
+        window.location.href = `${API_URL}/api/auth/github`;
     }
-
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
             <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-200">
