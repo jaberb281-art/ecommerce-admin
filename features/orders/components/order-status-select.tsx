@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation"
 import { updateOrderStatus } from "@/features/orders/actions/order.actions"
 
 const TRANSITIONS: Record<string, string[]> = {
-    PENDING: ["SHIPPED", "CANCELLED"],
-    SHIPPED: ["COMPLETED"],
+    PENDING: ["PROCESSING", "SHIPPED", "CANCELLED"],
+    PROCESSING: ["SHIPPED", "CANCELLED"],
+    SHIPPED: ["DELIVERED", "COMPLETED"],
+    DELIVERED: ["COMPLETED"],
     COMPLETED: [],
     CANCELLED: [],
 }
@@ -22,13 +24,16 @@ export function OrderStatusSelect({
 }) {
     const [status, setStatus] = useState(currentStatus)
     const [loading, setLoading] = useState(false)
+    const [selected, setSelected] = useState("") // ✅ controlled value
     const router = useRouter()
     const allowed = TRANSITIONS[status] ?? []
 
     async function handleChange(newStatus: string) {
+        if (!newStatus) return
         setLoading(true)
         await updateOrderStatus(orderId, newStatus)
         setStatus(newStatus)
+        setSelected("") // ✅ reset dropdown after update
         router.refresh()
         setLoading(false)
     }
@@ -48,8 +53,8 @@ export function OrderStatusSelect({
             </span>
             <select
                 disabled={loading}
+                value={selected} // ✅ controlled
                 onChange={e => handleChange(e.target.value)}
-                defaultValue=""
                 className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-50"
             >
                 <option value="" disabled>Update</option>
