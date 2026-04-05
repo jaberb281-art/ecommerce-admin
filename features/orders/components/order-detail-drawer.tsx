@@ -144,6 +144,44 @@ export function OrderDetailDrawer({ order, statusStyles }: OrderDetailDrawerProp
                                 <p className="text-xs text-slate-500">{order.user?.email}</p>
                             </div>
 
+                            {order.isGift && (
+                                <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 space-y-2">
+                                    <h3 className="text-xs font-semibold text-pink-500 uppercase tracking-wide flex items-center gap-1.5">
+                                        🎁 Gift Order
+                                    </h3>
+                                    {order.giftSenderName && (
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-500">From</span>
+                                            <span className="font-semibold text-slate-800">{order.giftSenderName}</span>
+                                        </div>
+                                    )}
+                                    {order.giftRecipientName && (
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-500">Recipient</span>
+                                            <span className="font-semibold text-slate-800">{order.giftRecipientName}</span>
+                                        </div>
+                                    )}
+                                    {order.giftRecipientPhone && (
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-500">Recipient Phone</span>
+                                            <span className="font-semibold text-slate-800">{order.giftRecipientPhone}</span>
+                                        </div>
+                                    )}
+                                    {order.giftRecipientAddress && (
+                                        <div className="flex justify-between text-xs gap-4">
+                                            <span className="text-slate-500 shrink-0">Deliver To</span>
+                                            <span className="font-semibold text-slate-800 text-right">{order.giftRecipientAddress}</span>
+                                        </div>
+                                    )}
+                                    {order.giftMessage && (
+                                        <div className="pt-2 border-t border-pink-200">
+                                            <p className="text-xs text-slate-500 mb-1">Gift Message</p>
+                                            <p className="text-sm text-slate-800 italic">"{order.giftMessage}"</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-1">
                                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
                                     <MapPin className="h-3.5 w-3.5" /> Delivery Address
