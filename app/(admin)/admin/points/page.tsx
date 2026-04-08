@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { Coins, TrendingUp, Gift, Search, ChevronDown, ChevronUp, Plus, Minus, AlertCircle } from "lucide-react"
+import apiClient from "@/lib/api-client"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -48,33 +49,22 @@ const TX_LABELS: Record<string, string> = {
     MANUAL: "Manual",
 }
 
-// ── Get token from cookie ─────────────────────────────────────────────────────
-
-function getToken(): string {
-    return document.cookie
-        .split("; ")
-        .find(row => row.startsWith("access_token="))
-        ?.split("=")[1] ?? ""
-}
-
-// ── API fetch wrapper ─────────────────────────────────────────────────────────
+// ── API wrapper using the proven apiClient (handles auth + base URL) ──────────
 
 async function apiFetch(path: string, options: RequestInit = {}) {
-    const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
-    const token = getToken()
-    const res = await fetch(`${base}${path}`, {
-        ...options,
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            ...options.headers,
-        },
-    })
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body?.message ?? `HTTP ${res.status}`)
+    const method = (options.method ?? "GET").toLowerCase() as "get" | "post" | "patch" | "delete"
+    const body = options.body ? JSON.parse(options.body as string) : undefined
+    let res
+    if (method === "get") {
+        res = await apiClient.get(path)
+    } else if (method === "post") {
+        res = await apiClient.post(path, body)
+    } else if (method === "patch") {
+        res = await apiClient.patch(path, body)
+    } else {
+        res = await apiClient.delete(path)
     }
-    return res.json()
+    return res.data
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
