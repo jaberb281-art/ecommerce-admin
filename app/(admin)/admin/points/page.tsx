@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Coins, TrendingUp, Gift, Search, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react"
-import apiClient from "@/lib/api-client"
+import { Coins, TrendingUp, Gift, Search, ChevronDown, ChevronUp, Plus, Minus, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -49,29 +48,60 @@ const TX_LABELS: Record<string, string> = {
     MANUAL: "Manual",
 }
 
+// ── Get token from cookie ─────────────────────────────────────────────────────
+
+function getToken(): string {
+    return document.cookie
+        .split("; ")
+        .find(row => row.startsWith("access_token="))
+        ?.split("=")[1] ?? ""
+}
+
+// ── API fetch wrapper ─────────────────────────────────────────────────────────
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+    const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
+    const token = getToken()
+    const res = await fetch(`${base}${path}`, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...options.headers,
+        },
+    })
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.message ?? `HTTP ${res.status}`)
+    }
+    return res.json()
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PointsPage() {
     const [users, setUsers] = useState<UserPoints[]>([])
     const [filtered, setFiltered] = useState<UserPoints[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [search, setSearch] = useState("")
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [detailMap, setDetailMap] = useState<Record<string, UserDetail>>({})
     const [detailLoading, setDetailLoading] = useState<string | null>(null)
 
-    // Adjust modal state
+    // Adjust modal
     const [adjustUser, setAdjustUser] = useState<UserPoints | null>(null)
     const [adjustPoints, setAdjustPoints] = useState("")
     const [adjustReason, setAdjustReason] = useState("")
     const [adjusting, setAdjusting] = useState(false)
 
-    // ── Fetch all users with points ──────────────────────────────────────────
+    // ── Fetch users ───────────────────────────────────────────────────────────
 
     const fetchUsers = useCallback(async () => {
         setLoading(true)
+        setError(null)
         try {
-            const { data } = await apiClient.get("/users?limit=200")
+            const data = await apiFetch("/users?limit=200")
             const list: UserPoints[] = (data.data ?? []).map((u: any) => ({
                 id: u.id,
                 name: u.name,
@@ -79,12 +109,12 @@ export default function PointsPage() {
                 pointsBalance: u.pointsBalance ?? 0,
                 orderCount: u.orderCount ?? 0,
             }))
-            // Sort by highest balance first
             list.sort((a, b) => b.pointsBalance - a.pointsBalance)
             setUsers(list)
             setFiltered(list)
-        } catch {
-            toast.error("Failed to load users")
+        } catch (err: any) {
+            setError(err.message)
+            toast.error("Failed to load users: " + err.message)
         } finally {
             setLoading(false)
         }
@@ -92,37 +122,37 @@ export default function PointsPage() {
 
     useEffect(() => { fetchUsers() }, [fetchUsers])
 
-    // ── Search filter ────────────────────────────────────────────────────────
+    // ── Search ────────────────────────────────────────────────────────────────
 
     useEffect(() => {
         const q = search.toLowerCase()
-        setFiltered(
-            q ? users.filter(u =>
+        setFiltered(q
+            ? users.filter(u =>
                 u.name?.toLowerCase().includes(q) ||
-                u.email.toLowerCase().includes(q)
-            ) : users
+                u.email.toLowerCase().includes(q))
+            : users
         )
     }, [search, users])
 
-    // ── Expand row → load transaction history ────────────────────────────────
+    // ── Expand row ────────────────────────────────────────────────────────────
 
     async function toggleExpand(userId: string) {
         if (expandedId === userId) { setExpandedId(null); return }
         setExpandedId(userId)
-        if (detailMap[userId]) return // already loaded
+        if (detailMap[userId]) return
 
         setDetailLoading(userId)
         try {
-            const { data } = await apiClient.get(`/points/user/${userId}`)
+            const data = await apiFetch(`/points/user/${userId}`)
             setDetailMap(prev => ({ ...prev, [userId]: data }))
-        } catch {
-            toast.error("Failed to load transaction history")
+        } catch (err: any) {
+            toast.error("Failed to load history: " + err.message)
         } finally {
             setDetailLoading(null)
         }
     }
 
-    // ── Adjust points ────────────────────────────────────────────────────────
+    // ── Adjust points ─────────────────────────────────────────────────────────
 
     async function handleAdjust() {
         if (!adjustUser) return
@@ -132,25 +162,24 @@ export default function PointsPage() {
 
         setAdjusting(true)
         try {
-            await apiClient.post(`/points/user/${adjustUser.id}/adjust`, {
-                points: pts,
-                description: adjustReason.trim(),
+            await apiFetch(`/points/user/${adjustUser.id}/adjust`, {
+                method: "POST",
+                body: JSON.stringify({ points: pts, description: adjustReason.trim() }),
             })
-            toast.success(`${pts > 0 ? "+" : ""}${pts} points applied to ${adjustUser.name ?? adjustUser.email}`)
-            // Refresh user list + clear cached detail
+            toast.success(`${pts > 0 ? "+" : ""}${pts} pts applied to ${adjustUser.name ?? adjustUser.email}`)
             setDetailMap(prev => { const n = { ...prev }; delete n[adjustUser.id]; return n })
             await fetchUsers()
             setAdjustUser(null)
             setAdjustPoints("")
             setAdjustReason("")
         } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Failed to adjust points")
+            toast.error(err.message ?? "Failed to adjust points")
         } finally {
             setAdjusting(false)
         }
     }
 
-    // ── Stats ────────────────────────────────────────────────────────────────
+    // ── Stats ─────────────────────────────────────────────────────────────────
 
     const totalPoints = users.reduce((s, u) => s + u.pointsBalance, 0)
     const usersWithPoints = users.filter(u => u.pointsBalance > 0).length
@@ -160,12 +189,9 @@ export default function PointsPage() {
     return (
         <div className="space-y-6 p-6">
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Points Management</h1>
-                    <p className="text-sm text-slate-500 mt-1">View balances, transaction history, and adjust points manually</p>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900">Points Management</h1>
+                <p className="text-sm text-slate-500 mt-1">View balances, transaction history, and adjust points manually</p>
             </div>
 
             {/* Stats */}
@@ -199,6 +225,15 @@ export default function PointsPage() {
                 </div>
             </div>
 
+            {/* Error banner */}
+            {error && (
+                <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span><strong>Failed to load users:</strong> {error}</span>
+                    <button onClick={fetchUsers} className="ml-auto underline">Retry</button>
+                </div>
+            )}
+
             {/* Search */}
             <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -223,12 +258,11 @@ export default function PointsPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? (
-                            <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-400">Loading...</td></tr>
-                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-400">Loading users...</td></tr>
+                        ) : filtered.length === 0 && !error ? (
                             <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-400">No users found</td></tr>
                         ) : filtered.map(user => (
                             <>
-                                {/* User row */}
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
@@ -265,16 +299,12 @@ export default function PointsPage() {
                                                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1"
                                             >
                                                 History
-                                                {expandedId === user.id
-                                                    ? <ChevronUp className="h-3 w-3" />
-                                                    : <ChevronDown className="h-3 w-3" />
-                                                }
+                                                {expandedId === user.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
 
-                                {/* Expanded transaction history */}
                                 {expandedId === user.id && (
                                     <tr key={`${user.id}-detail`}>
                                         <td colSpan={4} className="bg-slate-50 px-6 py-4">
@@ -318,69 +348,50 @@ export default function PointsPage() {
                     <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
                         <h2 className="text-lg font-bold text-slate-900 mb-1">Adjust Points</h2>
                         <p className="text-sm text-slate-500 mb-5">
-                            {adjustUser.name ?? adjustUser.email} · current balance:&nbsp;
+                            {adjustUser.name ?? adjustUser.email} · current balance:{" "}
                             <span className="font-semibold text-amber-600">{adjustUser.pointsBalance} pts</span>
                         </p>
-
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-medium text-slate-700 mb-1 block">
                                     Points (positive to add, negative to deduct)
                                 </label>
                                 <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setAdjustPoints(v => String((parseInt(v) || 0) - 50))}
-                                        className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"
-                                    ><Minus className="h-4 w-4 text-slate-500" /></button>
-                                    <input
-                                        type="number"
-                                        value={adjustPoints}
-                                        onChange={e => setAdjustPoints(e.target.value)}
+                                    <button type="button" onClick={() => setAdjustPoints(v => String((parseInt(v) || 0) - 50))}
+                                        className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50">
+                                        <Minus className="h-4 w-4 text-slate-500" />
+                                    </button>
+                                    <input type="number" value={adjustPoints} onChange={e => setAdjustPoints(e.target.value)}
                                         placeholder="e.g. 100 or -50"
-                                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setAdjustPoints(v => String((parseInt(v) || 0) + 50))}
-                                        className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"
-                                    ><Plus className="h-4 w-4 text-slate-500" /></button>
+                                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200" />
+                                    <button type="button" onClick={() => setAdjustPoints(v => String((parseInt(v) || 0) + 50))}
+                                        className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50">
+                                        <Plus className="h-4 w-4 text-slate-500" />
+                                    </button>
                                 </div>
                             </div>
-
                             <div>
                                 <label className="text-xs font-medium text-slate-700 mb-1 block">Reason (shown in user history)</label>
-                                <input
-                                    type="text"
-                                    value={adjustReason}
-                                    onChange={e => setAdjustReason(e.target.value)}
+                                <input type="text" value={adjustReason} onChange={e => setAdjustReason(e.target.value)}
                                     placeholder="e.g. Apology for delayed order"
-                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
-                                />
+                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200" />
                             </div>
-
                             {adjustPoints && !isNaN(parseInt(adjustPoints)) && (
                                 <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-600">
-                                    New balance will be:{" "}
+                                    New balance:{" "}
                                     <span className="font-bold text-slate-900">
                                         {adjustUser.pointsBalance + (parseInt(adjustPoints) || 0)} pts
                                     </span>
                                 </div>
                             )}
                         </div>
-
                         <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => { setAdjustUser(null); setAdjustPoints(""); setAdjustReason("") }}
-                                className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                            >
+                            <button onClick={() => { setAdjustUser(null); setAdjustPoints(""); setAdjustReason("") }}
+                                className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
                                 Cancel
                             </button>
-                            <button
-                                onClick={handleAdjust}
-                                disabled={adjusting}
-                                className="flex-1 rounded-lg bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-                            >
+                            <button onClick={handleAdjust} disabled={adjusting}
+                                className="flex-1 rounded-lg bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
                                 {adjusting ? "Saving..." : "Apply"}
                             </button>
                         </div>
