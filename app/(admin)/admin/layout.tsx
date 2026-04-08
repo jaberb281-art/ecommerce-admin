@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Zap, Store } from "lucide-react"
+import { Zap, Store, Coins } from "lucide-react"
 import {
     LayoutDashboard,
     Package,
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/customers", label: "Customers", icon: UserCheck },
+    { href: "/admin/points", label: "Points", icon: Coins },
     { href: "/admin/categories", label: "Categories", icon: Tag },
     { href: "/admin/coupons", label: "Coupons", icon: Ticket },
     { href: "/admin/badges", label: "Badges", icon: Award },
