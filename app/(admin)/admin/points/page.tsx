@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 import axios from "axios"
 import { PointsClient } from "./PointsClient"
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_BASE = `${(process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")}/api`
 
 export const dynamic = "force-dynamic"
 

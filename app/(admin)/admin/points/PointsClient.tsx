@@ -44,7 +44,7 @@ const TX_LABELS: Record<string, string> = {
 
 // ── API helper — uses same pattern as api-client.ts ───────────────────────────
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_BASE = `${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000").replace(/\/$/, "")}/api`
 
 function authAxios() {
     const token = Cookies.get("access_token") || Cookies.get("token")
