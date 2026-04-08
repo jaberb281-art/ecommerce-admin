@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { updateOrderStatus } from "@/features/orders/actions/order.actions"
+import { toast } from "sonner"
 
 const TRANSITIONS: Record<string, string[]> = {
-    PENDING: ["PROCESSING", "SHIPPED", "CANCELLED"],
+    PENDING: ["PROCESSING", "CANCELLED"],
     PROCESSING: ["SHIPPED", "CANCELLED"],
-    SHIPPED: ["DELIVERED", "COMPLETED"],
+    SHIPPED: ["DELIVERED"],
     DELIVERED: ["COMPLETED"],
     COMPLETED: [],
     CANCELLED: [],
@@ -23,19 +23,24 @@ export function OrderStatusSelect({
     statusStyles: Record<string, string>
 }) {
     const [status, setStatus] = useState(currentStatus)
-    const [loading, setLoading] = useState(false)
-    const [selected, setSelected] = useState("") // ✅ controlled value
-    const router = useRouter()
+    const [isPending, startTransition] = useTransition()
     const allowed = TRANSITIONS[status] ?? []
 
     async function handleChange(newStatus: string) {
         if (!newStatus) return
-        setLoading(true)
-        await updateOrderStatus(orderId, newStatus)
+
+        // Optimistically update the UI immediately — no blank flash
+        const previousStatus = status
         setStatus(newStatus)
-        setSelected("") // ✅ reset dropdown after update
-        router.refresh()
-        setLoading(false)
+
+        startTransition(async () => {
+            const result = await updateOrderStatus(orderId, newStatus)
+            if (!result.success) {
+                // Roll back on failure
+                setStatus(previousStatus)
+                toast.error(result.error ?? "Failed to update status")
+            }
+        })
     }
 
     if (allowed.length === 0) {
@@ -52,12 +57,14 @@ export function OrderStatusSelect({
                 {status}
             </span>
             <select
-                disabled={loading}
-                value={selected} // ✅ controlled
+                disabled={isPending}
+                value=""
                 onChange={e => handleChange(e.target.value)}
-                className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-50"
+                className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-40"
             >
-                <option value="" disabled>Update</option>
+                <option value="" disabled>
+                    {isPending ? "Saving..." : "Update →"}
+                </option>
                 {allowed.map(s => (
                     <option key={s} value={s}>{s}</option>
                 ))}
