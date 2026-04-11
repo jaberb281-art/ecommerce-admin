@@ -2,16 +2,16 @@
 
 import { useState, useTransition } from "react"
 import { updateShopSettings } from "@/features/storefront/actions/storefront.actions"
-import { Save, ImageIcon, Type, Megaphone, ExternalLink, CheckCircle2, AlertCircle, Store, Plus, Trash2, Radio } from "lucide-react"
+import { Save, ImageIcon, Type, Megaphone, ExternalLink, CheckCircle2, AlertCircle, Plus, Trash2, Radio, LayoutGrid } from "lucide-react"
 
-function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+function Section({ icon: Icon, title, subtitle, children }: { icon: React.ElementType; title: string; subtitle?: string; children: React.ReactNode }) {
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
                 <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
                     <Icon size={15} className="text-emerald-600" />
                 </div>
-                <h3 className="font-semibold text-sm text-slate-900">{title}</h3>
+                <div><h3 className="font-semibold text-sm text-slate-900">{title}</h3>{subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}</div>
             </div>
             <div className="p-6 space-y-5">{children}</div>
         </div>
@@ -35,6 +35,13 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
     const [status, setStatus] = useState<"idle" | "saved" | "error">("idle")
     const [errorMsg, setErrorMsg] = useState("")
 
+    const defaultGrid = [
+        { id: "hot-deals", label: "HOT DEALS", badge: "% MOST POPULAR", link: "/shop", imageUrl: "", size: "large" },
+        { id: "best-sellers", label: "BEST SELLERS", badge: "\u2b50 TOP RATED", link: "/shop", imageUrl: "", size: "large" },
+        { id: "new-arrivals", label: "NEW ARRIVALS", badge: "", link: "/shop", imageUrl: "", size: "medium" },
+        { id: "all-categories", label: "ALL CATEGORIES", badge: "CURATED", link: "/categories", imageUrl: "", size: "medium" },
+    ]
+
     const [form, setForm] = useState({
         heroImageUrl: initialData?.heroImageUrl ?? "",
         heroTitle: initialData?.heroTitle ?? "",
@@ -48,7 +55,22 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
         announcementSlides: initialData?.announcementSlides ?? [{ text: "", link: "", linkLabel: "" }],
         announcementBgColor: initialData?.announcementBgColor ?? "#18181b",
         announcementTextColor: initialData?.announcementTextColor ?? "#ffffff",
+        categoryGrid: initialData?.categoryGrid ?? defaultGrid,
     })
+
+    function setTile(index: number, field: string, value: string) {
+        const updated = form.categoryGrid.map((tile: any, i: number) =>
+            i === index ? { ...tile, [field]: value } : tile
+        )
+        set("categoryGrid", updated)
+    }
+    function addTile() {
+        if (form.categoryGrid.length >= 6) return
+        set("categoryGrid", [...form.categoryGrid, { id: `tile-${Date.now()}`, label: "", badge: "", link: "/shop", imageUrl: "", size: "medium" }])
+    }
+    function removeTile(index: number) {
+        set("categoryGrid", form.categoryGrid.filter((_: any, i: number) => i !== index))
+    }
 
     const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -142,6 +164,78 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
                             />
                         </div>
                     </Field>
+                </div>
+            </Section>
+
+
+            {/* Shop by Category Grid */}
+            <Section icon={LayoutGrid} title="Shop by Category Grid" subtitle="Control the bento tiles — images, labels, badges and links">
+                <p className="text-xs text-slate-400">Each tile needs a background image URL, label, optional badge, and a link. First two tiles display large.</p>
+                <div className="space-y-3">
+                    {form.categoryGrid.map((tile: any, i: number) => (
+                        <div key={tile.id ?? i} className="rounded-xl border border-slate-200 overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black flex items-center justify-center">{i + 1}</span>
+                                    <span className="text-xs font-semibold text-slate-700">{tile.label || `Tile ${i + 1}`}</span>
+                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full capitalize">{tile.size}</span>
+                                </div>
+                                {form.categoryGrid.length > 2 && (
+                                    <button onClick={() => removeTile(i)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <Trash2 size={13} />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <Field label="Background Image URL">
+                                        <div className="flex gap-2">
+                                            <input type="url" value={tile.imageUrl} onChange={e => setTile(i, "imageUrl", e.target.value)} placeholder="https://res.cloudinary.com/..." className={inputCls} />
+                                            {tile.imageUrl && (
+                                                <div className="h-10 w-16 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={tile.imageUrl} alt="tile" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Field>
+                                </div>
+                                <Field label="Label"><input type="text" value={tile.label} onChange={e => setTile(i, "label", e.target.value)} placeholder="e.g. HOT DEALS" className={inputCls} /></Field>
+                                <Field label="Badge text (optional)"><input type="text" value={tile.badge} onChange={e => setTile(i, "badge", e.target.value)} placeholder="e.g. % MOST POPULAR" className={inputCls} /></Field>
+                                <Field label="Link destination">
+                                    <div className="relative">
+                                        <ExternalLink size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input type="text" value={tile.link} onChange={e => setTile(i, "link", e.target.value)} placeholder="/shop?category=deals" className={`${inputCls} pl-9`} />
+                                    </div>
+                                </Field>
+                                <Field label="Size">
+                                    <select value={tile.size} onChange={e => setTile(i, "size", e.target.value)} className={inputCls}>
+                                        <option value="large">Large</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="small">Small</option>
+                                    </select>
+                                </Field>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {form.categoryGrid.length < 6 && (
+                    <button onClick={addTile} className="flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors mt-1">
+                        <Plus size={14} /> Add tile
+                    </button>
+                )}
+                <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Grid preview</p>
+                    <div className="grid grid-cols-4 gap-1.5 h-20">
+                        {form.categoryGrid.slice(0, 4).map((tile: any, i: number) => (
+                            <div key={i} className="rounded-lg overflow-hidden relative flex items-end p-1.5"
+                                style={{ backgroundImage: tile.imageUrl ? `url(${tile.imageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundColor: tile.imageUrl ? undefined : "#e2e8f0" }}>
+                                {!tile.imageUrl && <div className="absolute inset-0 flex items-center justify-center"><ImageIcon size={12} className="text-slate-400" /></div>}
+                                {tile.imageUrl && <div className="absolute inset-0 bg-black/40 rounded-lg" />}
+                                <span className="relative text-[7px] font-black text-white leading-tight">{tile.label || `Tile ${i + 1}`}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </Section>
 
