@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 
-// NEXT_PUBLIC_API_URL is already the full API base e.g. https://backend.vercel.app/api
-// Do NOT append /api again — that causes double /api/api/ bugs
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000/api").replace(/\/$/, "")
+// Match the exact same URL pattern used by users/page.tsx and orders/page.tsx
+// which are confirmed to work in production
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
+const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
@@ -19,9 +20,13 @@ export async function getShopSettings() {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
         })
-        if (!res.ok) return null
+        if (!res.ok) {
+            console.error(`getShopSettings failed: ${res.status} ${await res.text()}`)
+            return null
+        }
         return res.json()
-    } catch {
+    } catch (err) {
+        console.error("getShopSettings error:", err)
         return null
     }
 }
