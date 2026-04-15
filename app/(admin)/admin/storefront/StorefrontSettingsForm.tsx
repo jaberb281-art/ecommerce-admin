@@ -85,6 +85,8 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
         bentoNewArrivalsLabel: initialData?.bentoNewArrivalsLabel ?? "NEW ARRIVALS",
         bentoNewArrivalsLink: initialData?.bentoNewArrivalsLink ?? "/shop?sort=newest",
         bentoNewArrivalsVisible: initialData?.bentoNewArrivalsVisible ?? true,
+        profileBannerImages: initialData?.profileBannerImages ?? [],
+        profileCardTagline: initialData?.profileCardTagline ?? "Shbash Member",
     })
 
     const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
