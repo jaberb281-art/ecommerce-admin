@@ -11,40 +11,32 @@ export default function LoginPage() {
     const [error, setError] = useState("")
     const [isPending, setIsPending] = useState(false)
 
+    // ecommerce-admin/app/login/page.tsx — replace handleLogin with this
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-
         if (!email || !password) {
             setError("Please enter your email and password.")
             return
         }
-
         setError("")
         setIsPending(true)
 
         try {
-            const res = await fetch(`${API_URL}/api/auth/login`, {
+            const res = await fetch("/api/auth/login", {  // calls YOUR server route, not backend directly
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             })
 
             const data = await res.json()
 
             if (!res.ok) {
-                setError(data?.message || "Invalid email or password.")
+                setError(data?.error || "Invalid email or password.")
                 return
             }
 
-            document.cookie = `access_token=${data.access_token}; Path=/; SameSite=Lax; Secure`
-            document.cookie = `token=${data.access_token}; Path=/; SameSite=Lax; Secure`
-            document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; Path=/; SameSite=Lax; Secure`
-
             window.location.replace("/admin/dashboard")
-
-        } catch (err) {
+        } catch {
             setError("Something went wrong. Please try again.")
         } finally {
             setIsPending(false)
