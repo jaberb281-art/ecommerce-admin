@@ -625,6 +625,97 @@ export default function StorefrontSettingsForm({ initialData }: { initialData: a
                 </div>
             </Section>
 
+            {/* ── Profile Banners ───────────────────────────────── */}
+            <Section icon={ImageIcon} title="Profile Banners">
+                <Field label="Card Tagline" hint="Shown below the user's email on their profile banner card">
+                    <input
+                        type="text"
+                        value={form.profileCardTagline}
+                        onChange={e => set("profileCardTagline", e.target.value)}
+                        placeholder="Shbash Member"
+                        className={inputCls}
+                    />
+                </Field>
+
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Banner Images</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const banners = [...(form.profileBannerImages as any[])]
+                                banners.push({ id: `img-${Date.now()}`, url: "", label: "" })
+                                set("profileBannerImages", banners)
+                            }}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                        >
+                            <Plus size={13} /> Add Image
+                        </button>
+                    </div>
+                    <p className="text-xs text-slate-400">Paste image URLs (Cloudinary, imgbb, etc). Users see these in their banner picker under the "Images" tab.</p>
+
+                    {(form.profileBannerImages as any[]).length === 0 && (
+                        <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+                            <ImageIcon className="h-7 w-7 text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm text-slate-400 font-medium">No banner images yet</p>
+                            <p className="text-xs text-slate-300 mt-0.5">Click "Add Image" to add your first banner</p>
+                        </div>
+                    )}
+
+                    <div className="space-y-3">
+                        {(form.profileBannerImages as any[]).map((banner: any, i: number) => (
+                            <div key={banner.id} className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+                                <div className="flex gap-3 p-3">
+                                    {/* Preview */}
+                                    <div className="h-16 w-24 rounded-lg overflow-hidden bg-slate-200 border border-slate-200 shrink-0">
+                                        {banner.url ? (
+                                            <img src={banner.url} alt="" className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="h-full w-full flex items-center justify-center">
+                                                <ImageIcon className="h-5 w-5 text-slate-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Fields */}
+                                    <div className="flex-1 space-y-2 min-w-0">
+                                        <input
+                                            type="text"
+                                            value={banner.url}
+                                            onChange={e => {
+                                                const banners = [...(form.profileBannerImages as any[])]
+                                                banners[i] = { ...banners[i], url: e.target.value }
+                                                set("profileBannerImages", banners)
+                                            }}
+                                            placeholder="https://res.cloudinary.com/..."
+                                            className={inputCls + " text-xs"}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={banner.label}
+                                            onChange={e => {
+                                                const banners = [...(form.profileBannerImages as any[])]
+                                                banners[i] = { ...banners[i], label: e.target.value }
+                                                set("profileBannerImages", banners)
+                                            }}
+                                            placeholder="Label (e.g. Desert Dunes)"
+                                            className={inputCls + " text-xs"}
+                                        />
+                                    </div>
+                                    {/* Delete */}
+                                    <button
+                                        type="button"
+                                        onClick={() => set("profileBannerImages", (form.profileBannerImages as any[]).filter((_: any, j: number) => j !== i))}
+                                        className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors shrink-0 mt-0.5"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Section>
+
             {/* ── Save ──────────────────────────────────── */}
             <div className="flex items-center justify-end gap-3 pt-2 pb-8">
                 {status === "saved" && (
