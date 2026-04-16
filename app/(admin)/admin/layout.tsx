@@ -41,7 +41,7 @@ export default async function AdminLayout({
 
     if (!token) redirect("/login")
 
-    const user = userCookie ? JSON.parse(userCookie) : null
+    const user = userCookie ? JSON.parse(decodeURIComponent(userCookie)) : null
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50">
