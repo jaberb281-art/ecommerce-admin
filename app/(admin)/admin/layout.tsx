@@ -28,6 +28,8 @@ const NAV_ITEMS = [
     { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/admin/events", label: "Events", icon: Zap },
     { href: "/admin/storefront", label: "Storefront", icon: Store },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
+
 ]
 
 export default async function AdminLayout({
