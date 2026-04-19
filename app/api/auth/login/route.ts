@@ -40,8 +40,6 @@ export async function POST(req: NextRequest) {
         }
 
         response.cookies.set("access_token", data.access_token, cookieOptions)
-        // Keep 'token' cookie for the proxy route compatibility
-        response.cookies.set("token", data.access_token, cookieOptions)
         response.cookies.set(
             "user",
             encodeURIComponent(JSON.stringify(data.user)),

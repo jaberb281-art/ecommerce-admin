@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
+import { jwtVerify, type JWTPayload } from "jose"
 
-function decodeJwtPayload(token: string): { role?: string; exp?: number } | null {
+interface AdminJwtPayload extends JWTPayload {
+    role?: string
+}
+
+async function verifyAdminToken(token: string): Promise<AdminJwtPayload | null> {
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+        console.error("[middleware] JWT_SECRET is not set — cannot verify tokens")
+        return null
+    }
+
     try {
-        const base64Payload = token.split(".")[1]
-        if (!base64Payload) return null
-        const decoded = Buffer.from(base64Payload, "base64url").toString("utf-8")
-        return JSON.parse(decoded)
+        const key = new TextEncoder().encode(secret)
+        const { payload } = await jwtVerify<AdminJwtPayload>(token, key)
+        return payload
     } catch {
+        // Covers: invalid signature, expired token, malformed token
         return null
     }
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
     const token = req.cookies.get("access_token")?.value
     const { pathname } = req.nextUrl
 
@@ -22,19 +33,15 @@ export function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL("/login", req.url))
     }
 
-    const payload = decodeJwtPayload(token)
+    // Cryptographically verify the token — rejects forged or tampered tokens
+    const payload = await verifyAdminToken(token)
 
-    // Token is malformed or expired → redirect to login
+    // Invalid signature, expired, or malformed → redirect to login
     if (!payload) {
         return NextResponse.redirect(new URL("/login", req.url))
     }
 
-    // Check expiry
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-        return NextResponse.redirect(new URL("/login", req.url))
-    }
-
-    // Not an admin → redirect to login (or a /forbidden page)
+    // Not an admin → redirect to login with error
     if (payload.role !== "ADMIN") {
         return NextResponse.redirect(new URL("/login?error=forbidden", req.url))
     }
