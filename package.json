@@ -9,7 +9,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "vercel-build": "npm install && next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
