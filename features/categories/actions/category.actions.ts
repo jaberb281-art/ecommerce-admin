@@ -1,5 +1,5 @@
-import { getAccessToken } from "@/lib/auth"
 "use server"
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 

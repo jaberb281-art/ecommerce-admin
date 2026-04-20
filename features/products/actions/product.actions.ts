@@ -1,6 +1,5 @@
-import { getAccessToken } from "@/lib/auth"
 "use server"
-
+import { getAccessToken } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import axios from "axios"
