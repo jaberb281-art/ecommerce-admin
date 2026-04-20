@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { ProductForm } from "@/features/products/components/product-form"
 import { cookies } from "next/headers"
 import axios from "axios"
@@ -8,7 +9,7 @@ const API_URL = `${API_BASE}/api`
 
 export default async function NewProductPage() {
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = await getAccessToken()
 
     const { data } = await axios.get(`${API_URL}/categories`, {
         headers: { Authorization: `Bearer ${token}` },

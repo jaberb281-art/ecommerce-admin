@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 
@@ -7,7 +8,7 @@ const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
-    return cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    return await getAccessToken()
 }
 
 export async function getDashboardStats() {

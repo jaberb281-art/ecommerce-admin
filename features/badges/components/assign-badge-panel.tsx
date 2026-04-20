@@ -17,7 +17,7 @@ export function AssignBadgePanel({ badges, users }: { badges: any[]; users: any[
         if (!selectedUser || !selectedBadge) return
         setLoading(true)
         setSuccess("")
-        await awardBadge(selectedBadge, selectedUser.id, "Admin", note || undefined)
+        await awardBadge(selectedBadge, selectedUser.id, note || undefined)
         setSuccess(`Badge awarded to ${selectedUser.name}!`)
         setNote("")
         setSelectedBadge("")

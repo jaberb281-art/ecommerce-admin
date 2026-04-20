@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 import { AssignBadgePanel } from "@/features/badges/components/assign-badge-panel"
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic"
 
 async function getData() {
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    const token = await getAccessToken()
     const headers = { Authorization: `Bearer ${token}` }
 
     const [badgesRes, usersRes] = await Promise.all([

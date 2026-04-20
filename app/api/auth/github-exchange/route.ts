@@ -2,29 +2,37 @@ import { NextRequest, NextResponse } from "next/server"
 
 function getTokenMaxAge(jwt: string): number {
     try {
-        const payload = JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString())
+        const [, payloadB64] = jwt.split(".")
+        const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString())
         if (typeof payload.exp === "number") {
-            return Math.max(0, payload.exp - Math.floor(Date.now() / 1000))
+            const seconds = payload.exp - Math.floor(Date.now() / 1000)
+            return Math.max(0, seconds)
         }
     } catch { }
-    return 60 * 15
+    return 60 * 15 // safe fallback: 15 minutes
 }
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json()
+        const { ticket } = await req.json()
+
+        if (!ticket) {
+            return NextResponse.json({ error: "Missing exchange ticket" }, { status: 400 })
+        }
+
         const API_URL = process.env.API_URL!.replace(/\/$/, "")
 
-        const res = await fetch(`${API_URL}/api/auth/login`, {
+        // Forward the ticket to the backend to get the real token
+        const res = await fetch(`${API_URL}/api/auth/github/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ ticket }),
         })
 
         if (!res.ok) {
             const error = await res.json().catch(() => ({}))
             return NextResponse.json(
-                { error: error.message || "Invalid credentials" },
+                { error: error.message || "Ticket exchange failed" },
                 { status: res.status }
             )
         }
@@ -41,7 +49,9 @@ export async function POST(req: NextRequest) {
 
         const response = NextResponse.json({ success: true, user: data.user })
 
+        // Dynamically get the expiration from the token using the helper we created earlier
         const maxAge = getTokenMaxAge(data.access_token)
+
         const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -50,6 +60,7 @@ export async function POST(req: NextRequest) {
             maxAge,
         }
 
+        // Now the cookie is safely set on the Admin domain
         response.cookies.set("access_token", data.access_token, cookieOptions)
         response.cookies.set(
             "user",

@@ -5,7 +5,7 @@ const API_BASE =
 const API_URL = `${API_BASE}/api`
 
 export async function GET(req: NextRequest) {
-    const token = req.cookies.get("token")?.value || req.cookies.get("access_token")?.value
+    const token = req.cookies.get("access_token")?.value
 
     const res = await fetch(`${API_URL}/categories`, {
         headers: { Authorization: `Bearer ${token}` },

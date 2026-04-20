@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 // app/(admin)/admin/products/[id]/page.tsx
 import { notFound } from "next/navigation"
 import { getProduct } from "@/features/products/actions/product.actions"
@@ -16,7 +17,7 @@ interface Props {
 export default async function EditProductPage({ params }: Props) {
     const { id } = await params
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = await getAccessToken()
 
     const [product, categoriesRes] = await Promise.all([
         getProduct(id),

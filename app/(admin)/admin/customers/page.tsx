@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 import { Crown } from "lucide-react"
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic"
 async function getTopCustomers() {
     try {
         const cookieStore = await cookies()
-        const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+        const token = await getAccessToken()
         const { data } = await axios.get(`${API_URL}/analytics/top-customers?limit=50`, {
             headers: { Authorization: `Bearer ${token}` },
         })

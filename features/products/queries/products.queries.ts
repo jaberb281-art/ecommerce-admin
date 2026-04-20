@@ -1,4 +1,4 @@
-import { cookies } from "next/headers"
+import { getAccessToken } from "@/lib/auth"
 import axios from "axios"
 import { ProductColumn } from "../components/product-columns"
 import { format } from "date-fns"
@@ -9,10 +9,10 @@ const API_BASE =
 const API_URL = `${API_BASE}/api`
 
 export const getProducts = async (): Promise<ProductColumn[]> => {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    const token = await getAccessToken()
 
-    const { data } = await axios.get(`${API_URL}/products?limit=50&adminMode=true`, {
+    // Uses the admin-only endpoint — requires ADMIN JWT, returns all statuses
+    const { data } = await axios.get(`${API_URL}/products/admin/all?limit=50`, {
         headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -21,7 +21,7 @@ export const getProducts = async (): Promise<ProductColumn[]> => {
     return products.map((item: any) => ({
         id: item.id,
         name: item.name,
-        status: item.status as "active" | "draft" | "archived",
+        status: item.status as "ACTIVE" | "DRAFT" | "ARCHIVED",
         price: item.price.toString(),
         stock: item.stock,
         category: item.category?.name ?? "Uncategorized",

@@ -1,45 +1,38 @@
 // lib/api.ts — central server-side fetch utility
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation"
+import { getAccessToken } from "./auth"
+
+const API_BASE = (process.env.API_URL ?? "http://localhost:3000")
+  .replace(/\/api\/?$/, "")
+  .replace(/\/$/, "")
 
 export async function serverFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const token = await getAccessToken()
 
-  // 1. Guard: If no token, bounce to login
-  if (!token) redirect('/admin/login');
+  if (!token) redirect("/login")
 
-  // 2. Build Clean URL: Prevent URL joining errors (e.g., ...appapi/login)
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3000';
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const fullUrl = `${baseUrl}${cleanPath}`;
+  const cleanPath = path.startsWith("/") ? path : `/${path}`
+  const fullUrl = `${API_BASE}/api${cleanPath}`
 
-  // 3. Execute Fetch
   const res = await fetch(fullUrl, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      // Pass the token in the Authorization header (NestJS standard) 
-      // AND as a cookie if your backend specifically requires it
-      'Authorization': `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
-    cache: 'no-store',
-  });
+    cache: "no-store",
+  })
 
-  // 4. Handle Unauthorized
-  if (res.status === 401) {
-    redirect('/admin/login');
-  }
+  if (res.status === 401) redirect("/login")
 
-  // 5. Handle Errors
   if (!res.ok) {
-    const errorText = await res.text().catch(() => 'Unknown Error');
-    throw new Error(`API error: ${res.status} - ${errorText}`);
+    const errorText = await res.text().catch(() => "Unknown Error")
+    throw new Error(`API error: ${res.status} - ${errorText}`)
   }
 
-  return res.json();
+  return res.json()
 }

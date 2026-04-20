@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 // Server Component — fetches data server-side like all other admin pages
 import { cookies } from "next/headers"
 import axios from "axios"
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 async function getToken() {
     const cookieStore = await cookies()
-    return cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    return await getAccessToken()
 }
 
 async function getUsers() {

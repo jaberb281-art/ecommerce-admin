@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 import { format } from "date-fns"
@@ -22,7 +23,7 @@ const PROFILE_BG_PRESETS: Record<string, { background: string }> = {
 async function getUsers() {
     try {
         const cookieStore = await cookies()
-        const token = cookieStore.get("token")?.value
+        const token = await getAccessToken()
         const { data } = await axios.get(`${API_URL}/users?page=1&limit=50`, {
             headers: { Authorization: `Bearer ${token}` },
         })

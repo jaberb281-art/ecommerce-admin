@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 "use server"
 
 import { cookies } from "next/headers"
@@ -8,7 +9,7 @@ const API_URL = `${API_BASE}/api`
 
 export async function uploadImage(formData: FormData): Promise<{ url: string } | { error: string }> {
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = await getAccessToken()
 
     if (!token) return { error: "Unauthorized" }
 

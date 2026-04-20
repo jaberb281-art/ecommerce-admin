@@ -22,7 +22,7 @@ const ALLOWED_PROXY_PREFIXES = [
 
 async function handler(req: NextRequest) {
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value || cookieStore.get('access_token')?.value;
+    const token = cookieStore.get('access_token')?.value;
 
     // Strip /api/proxy prefix — backend already has /api global prefix
     const path = req.nextUrl.pathname.replace('/api/proxy', '');

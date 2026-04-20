@@ -1,10 +1,11 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 
 async function getBadge(id: string) {
     const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:8080").replace(/\/$/, "")
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = await getAccessToken()
 
     try {
         const { data } = await axios.get(`${API_BASE}/api/badges/${id}`, {

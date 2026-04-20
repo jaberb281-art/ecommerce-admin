@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import axios from "axios"
 import Link from "next/link"
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic"
 async function getBadges() {
     try {
         const cookieStore = await cookies()
-        const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+        const token = await getAccessToken()
         const { data } = await axios.get(`${API_URL}/badges`, {
             headers: { Authorization: `Bearer ${token}` },
         })

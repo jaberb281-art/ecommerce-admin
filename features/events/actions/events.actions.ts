@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -10,7 +11,7 @@ const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
-    return cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    return await getAccessToken()
 }
 
 function handleError(error: unknown): string {

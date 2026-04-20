@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 // app/(admin)/admin/orders/page.tsx
 import { cookies } from "next/headers"
 import axios from "axios"
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic"
 async function getOrders() {
     try {
         const cookieStore = await cookies()
-        const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+        const token = await getAccessToken()
         const { data } = await axios.get(`${API_URL}/orders/admin/all?limit=50`, {
             headers: { Authorization: `Bearer ${token}` },
         })

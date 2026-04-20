@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/auth"
 "use server"
 
 import { cookies } from "next/headers"
@@ -9,7 +10,7 @@ const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
-    return cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
+    return await getAccessToken()
 }
 
 export async function createBadge(formData: {
@@ -48,12 +49,12 @@ export async function deleteBadge(id: string) {
     revalidatePath("/admin/badges")
 }
 
-export async function awardBadge(badgeId: string, userId: string, awardedBy: string, note?: string) {
+export async function awardBadge(badgeId: string, userId: string, note?: string) {
     const token = await getToken()
     const res = await fetch(`${API_URL}/badges/${badgeId}/award/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ awardedBy, note }),
+        body: JSON.stringify({ note }),
     })
     revalidatePath("/admin/badges")
     return res.json()
