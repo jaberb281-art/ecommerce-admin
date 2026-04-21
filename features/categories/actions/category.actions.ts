@@ -1,11 +1,9 @@
-"use server"
+import { backendFetch, backendJSON } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
+"use server"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
@@ -14,7 +12,7 @@ async function getToken() {
 
 export async function createCategory(name: string) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/categories`, {
+    const res = await backendFetch("/categories", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -28,7 +26,7 @@ export async function createCategory(name: string) {
 
 export async function updateCategory(id: string, name: string, image?: string) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/categories/${id}`, {
+    const res = await backendFetch("/categories/${id}", {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -45,7 +43,7 @@ export async function updateCategory(id: string, name: string, image?: string) {
 
 export async function deleteCategory(id: string) {
     const token = await getToken()
-    await fetch(`${API_URL}/categories/${id}`, {
+    await backendFetch("/categories/${id}", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
     })
@@ -66,7 +64,7 @@ export async function uploadCategoryImage(
     backendFormData.append("file", file)
 
     try {
-        const res = await fetch(`${API_URL}/products/upload-image`, {
+        const res = await backendFetch("/products/upload-image", {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
             body: backendFormData,

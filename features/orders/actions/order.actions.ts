@@ -1,11 +1,10 @@
-"use server"
+import { backendFetch, backendJSON } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
+"use server"
+
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
@@ -18,7 +17,7 @@ export async function updateOrderStatus(
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const token = await getToken()
-        const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        const res = await backendFetch("/orders/${orderId}/status", {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",

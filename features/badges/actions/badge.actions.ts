@@ -1,11 +1,10 @@
-"use server"
+import { backendFetch, backendJSON } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
+"use server"
+
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
 
 async function getToken() {
     const cookieStore = await cookies()
@@ -19,7 +18,7 @@ export async function createBadge(formData: {
     color?: string
 }) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/badges`, {
+    const res = await backendFetch("/badges", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),
@@ -30,7 +29,7 @@ export async function createBadge(formData: {
 
 export async function updateBadge(id: string, formData: any) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/badges/${id}`, {
+    const res = await backendFetch("/badges/${id}", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),
@@ -41,19 +40,19 @@ export async function updateBadge(id: string, formData: any) {
 
 export async function deleteBadge(id: string) {
     const token = await getToken()
-    await fetch(`${API_URL}/badges/${id}`, {
+    await backendFetch("/badges/${id}", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
     })
     revalidatePath("/admin/badges")
 }
 
-export async function awardBadge(badgeId: string, userId: string, note?: string) {
+export async function awardBadge(badgeId: string, userId: string, awardedBy: string, note?: string) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/badges/${badgeId}/award/${userId}`, {
+    const res = await backendFetch("/badges/${badgeId}/award/${userId}", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ note }),
+        body: JSON.stringify({ awardedBy, note }),
     })
     revalidatePath("/admin/badges")
     return res.json()
@@ -61,7 +60,7 @@ export async function awardBadge(badgeId: string, userId: string, note?: string)
 
 export async function revokeBadge(badgeId: string, userId: string) {
     const token = await getToken()
-    await fetch(`${API_URL}/badges/${badgeId}/revoke/${userId}`, {
+    await backendFetch("/badges/${badgeId}/revoke/${userId}", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
     })
@@ -70,7 +69,7 @@ export async function revokeBadge(badgeId: string, userId: string) {
 
 export async function uploadBadgeImage(formData: FormData) {
     const token = await getToken()
-    const res = await fetch(`${API_URL}/badges/upload-image`, {
+    const res = await backendFetch("/badges/upload-image", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

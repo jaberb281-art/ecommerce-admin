@@ -1,10 +1,9 @@
-"use server"
+import { backendFetch, backendJSON } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
+"use server"
+
 import { cookies } from "next/headers"
 
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
 
 export async function uploadImage(formData: FormData): Promise<{ url: string } | { error: string }> {
     const cookieStore = await cookies()
@@ -19,7 +18,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string } |
     backendFormData.append("file", file)
 
     try {
-        const res = await fetch(`${API_URL}/products/upload-image`, {
+        const res = await backendFetch("/products/upload-image", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${token}`,

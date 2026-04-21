@@ -2,27 +2,24 @@ import { NextRequest, NextResponse } from "next/server"
 
 function getTokenMaxAge(jwt: string): number {
     try {
-        const [, payloadB64] = jwt.split(".")
-        const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString())
+        const payload = JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString())
         if (typeof payload.exp === "number") {
-            const seconds = payload.exp - Math.floor(Date.now() / 1000)
-            return Math.max(0, seconds)
+            return Math.max(0, payload.exp - Math.floor(Date.now() / 1000))
         }
     } catch { }
-    return 60 * 15 // safe fallback: 15 minutes
+    return 60 * 15
 }
 
 export async function POST(req: NextRequest) {
     try {
         const { ticket } = await req.json()
 
-        if (!ticket) {
-            return NextResponse.json({ error: "Missing exchange ticket" }, { status: 400 })
+        if (!ticket || typeof ticket !== "string") {
+            return NextResponse.json({ message: "Ticket is required" }, { status: 400 })
         }
 
-        const API_URL = process.env.API_URL!.replace(/\/$/, "")
-
-        // Forward the ticket to the backend to get the real token
+        // Forward the ticket to the backend to exchange for a real JWT
+        const API_URL = (process.env.API_URL ?? "").replace(/\/api\/?$/, "").replace(/\/$/, "")
         const res = await fetch(`${API_URL}/api/auth/github/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -30,27 +27,22 @@ export async function POST(req: NextRequest) {
         })
 
         if (!res.ok) {
-            const error = await res.json().catch(() => ({}))
+            const body = await res.json().catch(() => ({})) as any
             return NextResponse.json(
-                { error: error.message || "Ticket exchange failed" },
-                { status: res.status }
+                { message: body?.message ?? "Invalid or expired ticket" },
+                { status: 401 }
             )
         }
 
         const data = await res.json()
+        const accessToken: string = data.access_token
 
-        // Verify the user is actually an ADMIN before granting access
-        if (data.user?.role !== "ADMIN") {
-            return NextResponse.json(
-                { error: "Access denied. Admin accounts only." },
-                { status: 403 }
-            )
+        if (!accessToken) {
+            return NextResponse.json({ message: "No token received" }, { status: 500 })
         }
 
-        const response = NextResponse.json({ success: true, user: data.user })
-
-        // Dynamically get the expiration from the token using the helper we created earlier
-        const maxAge = getTokenMaxAge(data.access_token)
+        const response = NextResponse.json({ success: true })
+        const maxAge = getTokenMaxAge(accessToken)
 
         const cookieOptions = {
             httpOnly: true,
@@ -60,16 +52,11 @@ export async function POST(req: NextRequest) {
             maxAge,
         }
 
-        // Now the cookie is safely set on the Admin domain
-        response.cookies.set("access_token", data.access_token, cookieOptions)
-        response.cookies.set(
-            "user",
-            encodeURIComponent(JSON.stringify(data.user)),
-            { ...cookieOptions, httpOnly: false }
-        )
-
+        response.cookies.set("access_token", accessToken, cookieOptions)
         return response
-    } catch {
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+
+    } catch (err) {
+        console.error("[github-exchange]", err)
+        return NextResponse.json({ message: "Internal server error" }, { status: 500 })
     }
 }
