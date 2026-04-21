@@ -2,9 +2,23 @@
 
 import { backendJSON } from "@/lib/backend"
 
-export async function getEvents() {
+interface Event {
+    id: string
+    title: string
+    description?: string
+    location: string
+    venue?: string
+    city: string
+    startDate: string
+    endDate?: string
+    image?: string
+    status: "UPCOMING" | "ONGOING" | "PAST" | "CANCELLED"
+    isPublished: boolean
+}
+
+export async function getEvents(): Promise<Event[]> {
     try {
-        return await backendJSON("/events/admin/all")
+        return await backendJSON<Event[]>("/events/admin/all")
     } catch {
         return []
     }
