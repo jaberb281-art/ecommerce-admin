@@ -10,18 +10,37 @@ export async function getDashboardStats() {
     }
 }
 
-export async function getLowStockProducts() {
+interface LowStockProduct {
+    id: string
+    name: string
+    stock: number
+    images: string[]
+    category: { name: string } | null
+}
+
+export async function getLowStockProducts(threshold = 10): Promise<LowStockProduct[]> {
     try {
-        const data = await backendJSON<{ data: any[] }>("/products?limit=5")
-        return data.data ?? []
+        return await backendJSON<LowStockProduct[]>(
+            `/products/admin/low-stock?threshold=${threshold}&limit=20`
+        )
     } catch {
         return []
     }
 }
 
-export async function getRecentProducts() {
+interface Product {
+    id: string
+    name: string
+    price: number
+    stock: number
+    images: string[]
+    status: string
+    createdAt: string
+}
+
+export async function getRecentProducts(): Promise<Product[]> {
     try {
-        const data = await backendJSON<{ data: any[] }>("/products?limit=5")
+        const data = await backendJSON<{ data: Product[] }>("/products/admin/all?limit=5")
         return data.data ?? []
     } catch {
         return []
