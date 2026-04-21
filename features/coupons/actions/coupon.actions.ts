@@ -1,14 +1,6 @@
 "use server"
-import { backendFetch, backendJSON } from "@/lib/backend"
-import { getAccessToken } from "@/lib/auth"
-import { cookies } from "next/headers"
+import { backendFetch } from "@/lib/backend"
 import { revalidatePath } from "next/cache"
-
-
-async function getToken() {
-    const cookieStore = await cookies()
-    return await getAccessToken()
-}
 
 export async function createCoupon(formData: {
     code: string
@@ -19,10 +11,9 @@ export async function createCoupon(formData: {
     expiresAt?: string
     isActive: boolean
 }) {
-    const token = await getToken()
     const res = await backendFetch("/coupons", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
     })
     revalidatePath("/admin/coupons")
@@ -30,10 +21,9 @@ export async function createCoupon(formData: {
 }
 
 export async function updateCoupon(id: string, formData: any) {
-    const token = await getToken()
-    const res = await backendFetch("/coupons/${id}", {
+    const res = await backendFetch(`/coupons/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
     })
     revalidatePath("/admin/coupons")
@@ -41,10 +31,8 @@ export async function updateCoupon(id: string, formData: any) {
 }
 
 export async function deleteCoupon(id: string) {
-    const token = await getToken()
-    await backendFetch("/coupons/${id}", {
+    await backendFetch(`/coupons/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
     })
     revalidatePath("/admin/coupons")
 }

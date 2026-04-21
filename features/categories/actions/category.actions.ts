@@ -1,23 +1,11 @@
 "use server"
-import { backendFetch, backendJSON } from "@/lib/backend"
-import { getAccessToken } from "@/lib/auth"
-import { cookies } from "next/headers"
+import { backendFetch } from "@/lib/backend"
 import { revalidatePath } from "next/cache"
 
-
-async function getToken() {
-    const cookieStore = await cookies()
-    return await getAccessToken()
-}
-
 export async function createCategory(name: string) {
-    const token = await getToken()
     const res = await backendFetch("/categories", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
     })
     revalidatePath("/admin/categories")
@@ -25,13 +13,9 @@ export async function createCategory(name: string) {
 }
 
 export async function updateCategory(id: string, name: string, image?: string) {
-    const token = await getToken()
-    const res = await backendFetch("/categories/${id}", {
+    const res = await backendFetch(`/categories/${id}`, {
         method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             name,
             ...(image !== undefined && { image }),
@@ -42,10 +26,8 @@ export async function updateCategory(id: string, name: string, image?: string) {
 }
 
 export async function deleteCategory(id: string) {
-    const token = await getToken()
-    await backendFetch("/categories/${id}", {
+    await backendFetch(`/categories/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
     })
     revalidatePath("/admin/categories")
 }
@@ -54,9 +36,6 @@ export async function deleteCategory(id: string) {
 export async function uploadCategoryImage(
     formData: FormData
 ): Promise<{ url: string } | { error: string }> {
-    const token = await getToken()
-    if (!token) return { error: "Unauthorized" }
-
     const file = formData.get("file") as File
     if (!file) return { error: "No file provided" }
 
@@ -66,7 +45,6 @@ export async function uploadCategoryImage(
     try {
         const res = await backendFetch("/products/upload-image", {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
             body: backendFormData,
         })
 

@@ -1,27 +1,31 @@
 "use server"
-import { backendFetch, backendJSON } from "@/lib/backend"
-import { getAccessToken } from "@/lib/auth"
+import { backendFetch } from "@/lib/backend"
 import { revalidatePath } from "next/cache"
-import { cookies } from "next/headers"
 
 export async function getShopSettings() {
     try {
-        const token = await getAccessToken();
-
-        const response = await backendFetch("/shop/settings", {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to fetch shop settings");
+        const res = await backendFetch("/shop-settings", { method: "GET" })
+        if (!res.ok) {
+            console.error("[getShopSettings]", res.status)
+            return null
         }
-
-        return await response.json();
+        return res.json()
     } catch (error) {
-        console.error("getShopSettings Error:", error);
-        return null;
+        console.error("[getShopSettings] Error:", error)
+        return null
     }
+}
+
+export async function updateShopSettings(data: Record<string, unknown>) {
+    const res = await backendFetch("/shop-settings/update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as any
+        return { success: false as const, error: body?.message ?? `Error ${res.status}` }
+    }
+    revalidatePath("/admin/storefront")
+    return { success: true as const, data: await res.json() }
 }

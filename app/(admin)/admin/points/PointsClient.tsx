@@ -4,8 +4,6 @@ import { useState, useCallback } from "react"
 import { Coins, TrendingUp, Gift, Search, ChevronDown, ChevronUp, Plus, Minus, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
-import axios from "axios"
-import Cookies from "js-cookie"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,16 +40,25 @@ const TX_LABELS: Record<string, string> = {
     REDEMPTION: "Redeemed", MANUAL: "Manual",
 }
 
-// ── API helper — uses same pattern as api-client.ts ───────────────────────────
+// ── Server action wrappers (replaces the old js-cookie / axios pattern) ───────
 
-const API_BASE = `${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000").replace(/\/$/, "")}/api`
+async function fetchPointHistory(userId: string): Promise<Transaction[]> {
+    const res = await fetch(`/api/proxy/points/user/${userId}`, { cache: "no-store" })
+    if (!res.ok) throw new Error(`Error ${res.status}`)
+    const data = await res.json()
+    return data.transactions ?? []
+}
 
-function authAxios() {
-    const token = Cookies.get("access_token")
-    return axios.create({
-        baseURL: API_BASE,
-        headers: { Authorization: `Bearer ${token}` },
+async function postAdjustPoints(userId: string, points: number, description: string): Promise<void> {
+    const res = await fetch(`/api/proxy/points/user/${userId}/adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points, description }),
     })
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as any
+        throw new Error(body?.message ?? `Error ${res.status}`)
+    }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -90,10 +97,10 @@ export function PointsClient({
         if (detailMap[userId]) return
         setDetailLoading(userId)
         try {
-            const { data } = await authAxios().get(`/points/user/${userId}`)
-            setDetailMap(prev => ({ ...prev, [userId]: data.transactions ?? [] }))
+            const transactions = await fetchPointHistory(userId)
+            setDetailMap(prev => ({ ...prev, [userId]: transactions }))
         } catch (err: any) {
-            toast.error("Failed to load history: " + (err.response?.data?.message ?? err.message))
+            toast.error("Failed to load history: " + err.message)
         } finally {
             setDetailLoading(null)
         }
@@ -108,23 +115,20 @@ export function PointsClient({
         if (!adjustReason.trim()) { toast.error("Reason is required"); return }
         setAdjusting(true)
         try {
-            await authAxios().post(`/points/user/${adjustUser.id}/adjust`, {
-                points: pts,
-                description: adjustReason.trim(),
-            })
+            await postAdjustPoints(adjustUser.id, pts, adjustReason.trim())
             toast.success(`${pts > 0 ? "+" : ""}${pts} pts applied to ${adjustUser.name ?? adjustUser.email}`)
-            // Update balance in local state instantly
             setUsers(prev => prev.map(u =>
                 u.id === adjustUser.id
                     ? { ...u, pointsBalance: u.pointsBalance + pts }
                     : u
             ))
+            // Invalidate cached history so the next expand re-fetches
             setDetailMap(prev => { const n = { ...prev }; delete n[adjustUser.id]; return n })
             setAdjustUser(null)
             setAdjustPoints("")
             setAdjustReason("")
         } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Failed to adjust points")
+            toast.error(err.message ?? "Failed to adjust points")
         } finally {
             setAdjusting(false)
         }
