@@ -8,8 +8,13 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { X, ImagePlus, Loader2 } from "lucide-react"
 import Image from "next/image"
-import { createProductSchema, type ProductInput } from "@/features/products/schemas/product.schema"
-import { createProduct } from "@/features/products/actions/product.actions"
+import {
+    createProductSchema,
+    updateProductSchema,
+    type ProductInput,
+    type ProductUpdateInput,
+} from "@/features/products/schemas/product.schema"
+import { createProduct, updateProduct } from "@/features/products/actions/product.actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,29 +39,54 @@ interface Category {
     name: string
 }
 
-interface ProductFormProps {
-    categories: Category[]
+interface ExistingProduct {
+    id: string
+    name: string
+    description: string | null
+    price: unknown
+    stock: number
+    status: "ACTIVE" | "DRAFT" | "ARCHIVED"
+    images: string[]
+    categoryId: string
 }
 
-export function ProductForm({ categories }: ProductFormProps) {
+interface ProductFormProps {
+    categories: Category[]
+    /** Pass an existing product to switch to edit mode. Omit for create mode. */
+    product?: ExistingProduct
+}
+
+export function ProductForm({ categories, product }: ProductFormProps) {
+    const isEditing = !!product
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
     const [isUploading, setIsUploading] = useState(false)
 
-    const form = useForm<ProductInput>({
-        resolver: zodResolver(createProductSchema) as any,
-        defaultValues: {
-            name: "",
-            description: "",
-            price: 0,
-            stock: 0,
-            categoryId: "",
-            status: "DRAFT",
-            images: [],
-        },
+    const form = useForm<ProductUpdateInput>({
+        resolver: zodResolver(isEditing ? updateProductSchema : createProductSchema) as any,
+        defaultValues: isEditing
+            ? {
+                id: product.id,
+                name: product.name,
+                description: product.description ?? "",
+                price: Number(product.price),
+                stock: product.stock,
+                categoryId: product.categoryId,
+                status: product.status,
+                images: product.images,
+            }
+            : {
+                name: "",
+                description: "",
+                price: 0,
+                stock: 0,
+                categoryId: "",
+                status: "DRAFT",
+                images: [],
+            },
     })
 
-    const images = form.watch("images")
+    const images = form.watch("images") ?? []
 
     function removeImage(url: string) {
         form.setValue(
@@ -68,7 +98,6 @@ export function ProductForm({ categories }: ProductFormProps) {
 
     async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const files = e.target.files
-        console.log("handleImageUpload called, files:", files)
         if (!files || files.length === 0) return
 
         setIsUploading(true)
@@ -80,9 +109,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                 const formData = new FormData()
                 formData.append("file", file)
 
-                console.log("Uploading:", file.name)
                 const result = await uploadImage(formData)
-                console.log("Result:", result)
 
                 if ("error" in result) {
                     toast.error(result.error)
@@ -95,7 +122,7 @@ export function ProductForm({ categories }: ProductFormProps) {
             form.setValue("images", [...images, ...uploadedUrls], { shouldValidate: true })
             toast.success("Images uploaded successfully")
         } catch (err) {
-            console.error("Caught error:", err)
+            console.error("Image upload error:", err)
             toast.error("Failed to upload images")
         } finally {
             setIsUploading(false)
@@ -103,15 +130,16 @@ export function ProductForm({ categories }: ProductFormProps) {
         }
     }
 
-    function onSubmit(values: ProductInput) {
-        console.log("Submitting:", values)
+    function onSubmit(values: ProductUpdateInput) {
         startTransition(async () => {
-            const result = await createProduct(values)
+            const result = isEditing
+                ? await updateProduct(values)
+                : await createProduct(values as ProductInput)
 
             if (!result.success) {
                 if (typeof result.error === "object") {
                     Object.entries(result.error).forEach(([field, messages]) => {
-                        form.setError(field as keyof ProductInput, {
+                        form.setError(field as keyof ProductUpdateInput, {
                             message: Array.isArray(messages) ? messages[0] : String(messages),
                         })
                     })
@@ -121,7 +149,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                 return
             }
 
-            toast.success("Product created successfully")
+            toast.success(isEditing ? "Product updated successfully" : "Product created successfully")
             router.refresh()
             router.push("/admin/products")
         })
@@ -132,6 +160,7 @@ export function ProductForm({ categories }: ProductFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
                 {/* Basic Info */}
                 <section className="space-y-4">
                     <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -161,6 +190,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         placeholder="Describe the product..."
                                         className="min-h-[120px] resize-y"
                                         {...field}
+                                        value={field.value ?? ""}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -186,7 +216,10 @@ export function ProductForm({ categories }: ProductFormProps) {
                                             type="number"
                                             step="0.01"
                                             {...field}
-                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                                            value={field.value ?? ""}
+                                            onChange={(e) =>
+                                                field.onChange(e.target.value === "" ? 0 : Number(e.target.value))
+                                            }
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -203,7 +236,10 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         <Input
                                             type="number"
                                             {...field}
-                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                                            value={field.value ?? ""}
+                                            onChange={(e) =>
+                                                field.onChange(e.target.value === "" ? 0 : Number(e.target.value))
+                                            }
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -225,7 +261,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Category</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select a category" />
@@ -233,7 +269,9 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         </FormControl>
                                         <SelectContent>
                                             {categories.map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                <SelectItem key={cat.id} value={cat.id}>
+                                                    {cat.name}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -247,7 +285,7 @@ export function ProductForm({ categories }: ProductFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value ?? "DRAFT"}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select status" />
@@ -268,7 +306,9 @@ export function ProductForm({ categories }: ProductFormProps) {
 
                 {/* Images */}
                 <section className="space-y-4">
-                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Images</h2>
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                        Images
+                    </h2>
                     <FormField
                         control={form.control}
                         name="images"
@@ -280,7 +320,10 @@ export function ProductForm({ categories }: ProductFormProps) {
                                         {images.length > 0 && (
                                             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                                                 {images.map((url) => (
-                                                    <div key={url} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                                                    <div
+                                                        key={url}
+                                                        className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
+                                                    >
                                                         <Image src={url} alt="Product" fill className="object-cover" />
                                                         <button
                                                             type="button"
@@ -323,7 +366,10 @@ export function ProductForm({ categories }: ProductFormProps) {
 
                 <div className="flex items-center gap-3 pt-2">
                     <Button type="submit" disabled={isDisabled}>
-                        {isPending ? "Creating..." : "Create Product"}
+                        {isPending
+                            ? (isEditing ? "Saving..." : "Creating...")
+                            : (isEditing ? "Save Changes" : "Create Product")
+                        }
                     </Button>
                     <Button type="button" variant="outline" onClick={() => router.back()}>
                         Cancel

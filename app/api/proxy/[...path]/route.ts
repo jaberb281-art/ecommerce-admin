@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // Allowlist of backend path prefixes the admin proxy is permitted to forward.
 // Any request whose path does not start with one of these is rejected outright.
 const ALLOWED_PROXY_PREFIXES = [
-    '/admin/settings',
     '/mail',
     '/shop-settings',
     '/orders',

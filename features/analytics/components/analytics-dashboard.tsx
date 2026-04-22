@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import Image from "next/image"
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -17,7 +18,6 @@ interface AnalyticsData {
     newCustomers: { label: string; value: number }[]
 }
 
-// 1️⃣ Stable empty dataset — never undefined, charts always have valid data shape
 const EMPTY_DATA: AnalyticsData = {
     revenue: [],
     orders: [],
@@ -26,69 +26,27 @@ const EMPTY_DATA: AnalyticsData = {
     newCustomers: [],
 }
 
+async function fetchAnalytics(period: Period): Promise<AnalyticsData> {
+    const res = await fetch(`/api/analytics?period=${period}`)
+    if (!res.ok) throw new Error(`Analytics fetch failed: ${res.status}`)
+    const d = await res.json()
+    return {
+        revenue: d.revenue ?? [],
+        orders: d.orders ?? [],
+        topProducts: d.topProducts ?? [],
+        topCustomers: d.topCustomers ?? [],
+        newCustomers: d.newCustomers ?? [],
+    }
+}
+
 export default function AnalyticsDashboard() {
     const [period, setPeriod] = useState<Period>("monthly")
-    const [data, setData] = useState<AnalyticsData>(EMPTY_DATA)
-    const [loading, setLoading] = useState(true)
-    const abortRef = useRef<AbortController | null>(null)
-    // 2️⃣ Request identity guard — only apply result if it matches latest request
-    const requestIdRef = useRef<number>(0)
 
-    useEffect(() => {
-        console.log("Fetching analytics for:", period)
-
-        if (abortRef.current) abortRef.current.abort()
-        const controller = new AbortController()
-        abortRef.current = controller
-
-        // Increment request ID — stale responses will have a lower ID
-        const currentRequestId = ++requestIdRef.current
-
-        setData(EMPTY_DATA) // clear stale data immediately
-        setLoading(true)
-
-        const timer = setTimeout(async () => {
-            try {
-                const res = await fetch(`/api/analytics?period=${period}`, {
-                    signal: controller.signal,
-                })
-                const d = await res.json()
-
-                // 2️⃣ Only apply if this is still the latest request
-                if (currentRequestId !== requestIdRef.current) {
-                    console.log("Stale response discarded for:", period)
-                    return
-                }
-
-                setData({
-                    revenue: d.revenue ?? [],
-                    orders: d.orders ?? [],
-                    topProducts: d.topProducts ?? [],
-                    topCustomers: d.topCustomers ?? [],
-                    newCustomers: d.newCustomers ?? [],
-                })
-
-            } catch (err: any) {
-                if (err.name === "AbortError") {
-                    console.log("Request aborted for period:", period)
-                    return
-                }
-                console.error("Analytics fetch error:", err)
-                if (currentRequestId === requestIdRef.current) {
-                    setData(EMPTY_DATA)
-                }
-            } finally {
-                if (!controller.signal.aborted && currentRequestId === requestIdRef.current) {
-                    setLoading(false)
-                }
-            }
-        }, 300)
-
-        return () => {
-            clearTimeout(timer)
-            controller.abort()
-        }
-    }, [period])
+    const { data = EMPTY_DATA, isLoading, isError } = useQuery({
+        queryKey: ["analytics", period],
+        queryFn: () => fetchAnalytics(period),
+        staleTime: 2 * 60 * 1000, // keep fresh for 2 minutes
+    })
 
     const periods: { label: string; value: Period }[] = [
         { label: "Daily", value: "daily" },
@@ -107,14 +65,12 @@ export default function AnalyticsDashboard() {
                     {periods.map(p => (
                         <button
                             key={p.value}
-                            onClick={() => {
-                                if (loading || period === p.value) return
-                                setPeriod(p.value)
-                            }}
+                            onClick={() => setPeriod(p.value)}
+                            disabled={isLoading}
                             className={`px-4 py-2 text-sm font-medium transition-colors ${period === p.value
                                 ? "bg-black text-white"
                                 : "bg-white text-slate-600 hover:bg-slate-50"
-                                } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                             {p.label}
                         </button>
@@ -122,7 +78,13 @@ export default function AnalyticsDashboard() {
                 </div>
             </div>
 
-            {loading ? (
+            {isError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    Failed to load analytics. Please try refreshing the page.
+                </div>
+            )}
+
+            {isLoading ? (
                 <div className="flex items-center justify-center h-64 text-sm text-slate-400">
                     Loading analytics...
                 </div>
@@ -135,7 +97,6 @@ export default function AnalyticsDashboard() {
                             <p className="text-center text-sm text-slate-400 py-12">No revenue data yet</p>
                         ) : (
                             <ResponsiveContainer width="100%" height={300}>
-                                {/* 3️⃣ key on LineChart not ResponsiveContainer */}
                                 <LineChart key={period} data={data.revenue}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                     <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#94a3b8" />
@@ -161,7 +122,6 @@ export default function AnalyticsDashboard() {
                             <p className="text-center text-sm text-slate-400 py-12">No orders data yet</p>
                         ) : (
                             <ResponsiveContainer width="100%" height={300}>
-                                {/* 3️⃣ key on BarChart not ResponsiveContainer */}
                                 <BarChart key={period} data={data.orders}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                     <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#94a3b8" />
@@ -224,6 +184,7 @@ export default function AnalyticsDashboard() {
                             </tbody>
                         </table>
                     </div>
+
                     {/* New Customers Chart */}
                     <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
                         <h2 className="text-sm font-semibold text-slate-900 mb-6">New Customers Over Time</h2>
