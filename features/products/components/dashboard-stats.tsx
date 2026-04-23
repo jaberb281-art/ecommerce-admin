@@ -15,13 +15,19 @@ export default function DashboardStats() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        fetch("/api/dashboard/stats")
-            .then(res => res.json())
+        fetch("/api/proxy/orders/admin/stats", { cache: "no-store" })
+            .then(async res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                return res.json()
+            })
             .then(data => {
                 setStats(data)
                 setLoading(false)
             })
-            .catch(() => setLoading(false))
+            .catch(err => {
+                console.error("[DashboardStats] Failed to load stats:", err)
+                setLoading(false)
+            })
     }, [])
 
     const statCards = [
