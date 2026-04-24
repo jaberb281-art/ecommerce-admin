@@ -22,12 +22,24 @@ export async function backendFetch(
     const base = resolveBackendBase()
     const cleanPath = path.startsWith("/") ? path : `/${path}`
 
+    // When body is FormData, do NOT spread a plain headers object — doing so
+    // prevents the runtime from auto-setting Content-Type with the multipart
+    // boundary, which breaks file uploads. Instead, use the Headers class so
+    // the runtime can still append its own Content-Type alongside Authorization.
+    let headers: Headers
+    if (init.body instanceof FormData) {
+        headers = new Headers(init.headers)
+        if (token) headers.set("Authorization", `Bearer ${token}`)
+    } else {
+        headers = new Headers({
+            ...(init.headers as Record<string, string> ?? {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        })
+    }
+
     return fetch(`${base}/api${cleanPath}`, {
         ...init,
-        headers: {
-            ...(init.headers ?? {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers,
         cache: "no-store",
     })
 }
