@@ -1,11 +1,9 @@
 "use server"
-import { backendFetch, backendJSON } from "@/lib/backend"
+import { backendFetch } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
-import { cookies } from "next/headers"
 
 
 export async function uploadImage(formData: FormData): Promise<{ url: string } | { error: string }> {
-    const cookieStore = await cookies()
     const token = await getAccessToken()
 
     if (!token) return { error: "Unauthorized" }
@@ -19,9 +17,6 @@ export async function uploadImage(formData: FormData): Promise<{ url: string } |
     try {
         const res = await backendFetch("/products/upload-image", {
             method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
             body: backendFormData,
         })
 

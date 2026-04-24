@@ -36,9 +36,15 @@ async function handler(req: NextRequest) {
         process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') || '';
     const url = `${API_URL}/api${path}${search}`;
 
-    const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-    };
+    const headers: HeadersInit = {};
+
+    // Do NOT set Content-Type here — for multipart/form-data requests (e.g. image
+    // uploads) the browser must set it with the boundary. Forwarding the original
+    // Content-Type is the safest approach.
+    const incomingContentType = req.headers.get("content-type");
+    if (incomingContentType) {
+        headers["Content-Type"] = incomingContentType;
+    }
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;

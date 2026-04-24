@@ -1,24 +1,8 @@
-import { getAccessToken } from "@/lib/auth"
 import { ProductForm } from "@/features/products/components/product-form"
-import { cookies } from "next/headers"
-import axios from "axios"
-
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
+import { backendJSON } from "@/lib/backend"
 
 export default async function NewProductPage() {
-    const cookieStore = await cookies()
-    const token = await getAccessToken()
-
-    const { data } = await axios.get(`${API_URL}/categories`, {
-        headers: { Authorization: `Bearer ${token}` },
-    })
-
-    const categories = data.map((cat: any) => ({
-        id: cat.id,
-        name: cat.name,
-    }))
+    const categories = await backendJSON<{ id: string; name: string }[]>("/categories")
 
     return (
         <div className="flex-col">
