@@ -1,12 +1,7 @@
-import { getAccessToken } from "@/lib/auth"
-import { cookies } from "next/headers"
-import axios from "axios"
 import { format } from "date-fns"
 import Link from "next/link"
 import { ChevronRight, Star } from "lucide-react"
-
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
+import { backendJSON } from "@/lib/backend"
 
 const PROFILE_BG_PRESETS: Record<string, { background: string }> = {
     "warm-sand": { background: "linear-gradient(135deg, #f5e6c8 0%, #e8d5a3 50%, #d4b896 100%)" },
@@ -22,14 +17,10 @@ const PROFILE_BG_PRESETS: Record<string, { background: string }> = {
 
 async function getUsers() {
     try {
-        const cookieStore = await cookies()
-        const token = await getAccessToken()
-        const { data } = await axios.get(`${API_URL}/users?page=1&limit=50`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        const data = await backendJSON<{ data: any[] }>("/users?page=1&limit=50")
         return data.data ?? []
     } catch (error: any) {
-        console.error("Fetch Error:", error.response?.data || error.message)
+        console.error("Fetch Error:", error.message)
         return []
     }
 }

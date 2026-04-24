@@ -1,24 +1,14 @@
-import { getAccessToken } from "@/lib/auth"
 // app/(admin)/admin/orders/page.tsx
-import { cookies } from "next/headers"
-import axios from "axios"
 import { format } from "date-fns"
 import { OrderStatusSelect } from "@/features/orders/components/order-status-select"
 import { OrderDetailDrawer } from "@/features/orders/components/order-detail-drawer"
-
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
+import { backendJSON } from "@/lib/backend"
 
 export const dynamic = "force-dynamic"
 
 async function getOrders() {
     try {
-        const cookieStore = await cookies()
-        const token = await getAccessToken()
-        const { data } = await axios.get(`${API_URL}/orders/admin/all?limit=50`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        const data = await backendJSON<{ data: any[] }>("/orders/admin/all?limit=50")
         return data.data ?? []
     } catch {
         return []

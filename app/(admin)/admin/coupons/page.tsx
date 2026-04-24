@@ -1,24 +1,14 @@
-import { cookies } from "next/headers"
-import axios from "axios"
 import Link from "next/link"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { DeleteCouponButton } from "@/features/coupons/components/delete-coupon-button"
-
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
+import { backendJSON } from "@/lib/backend"
 
 export const dynamic = "force-dynamic"
 
 async function getCoupons() {
     try {
-        const cookieStore = await cookies()
-        const token = cookieStore.get("token")?.value || cookieStore.get("access_token")?.value
-        const { data } = await axios.get(`${API_URL}/coupons`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-        return data ?? []
+        return await backendJSON<any[]>("/coupons")
     } catch {
         return []
     }

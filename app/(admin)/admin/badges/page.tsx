@@ -1,25 +1,14 @@
-import { getAccessToken } from "@/lib/auth"
-import { cookies } from "next/headers"
-import axios from "axios"
 import Link from "next/link"
 import Image from "next/image"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { DeleteBadgeButton } from "@/features/badges/components/delete-badge-button"
-
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:3000").replace(/\/$/, "")
-const API_URL = `${API_BASE}/api`
+import { backendJSON } from "@/lib/backend"
 
 export const dynamic = "force-dynamic"
 
 async function getBadges() {
     try {
-        const cookieStore = await cookies()
-        const token = await getAccessToken()
-        const { data } = await axios.get(`${API_URL}/badges`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-        return data ?? []
+        return await backendJSON<any[]>("/badges")
     } catch {
         return []
     }
