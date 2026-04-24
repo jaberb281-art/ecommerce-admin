@@ -2,7 +2,6 @@
 import { backendFetch } from "@/lib/backend"
 import { getAccessToken } from "@/lib/auth"
 
-
 export async function uploadImage(formData: FormData): Promise<{ url: string } | { error: string }> {
     const token = await getAccessToken()
 
@@ -18,10 +17,12 @@ export async function uploadImage(formData: FormData): Promise<{ url: string } |
         const res = await backendFetch("/products/upload-image", {
             method: "POST",
             body: backendFormData,
+            // DO NOT pass headers here — letting the runtime auto-set
+            // Content-Type: multipart/form-data with the correct boundary
         })
 
         if (!res.ok) {
-            const err = await res.json()
+            const err = await res.json().catch(() => ({})) as any
             return { error: err.message || "Upload failed" }
         }
 

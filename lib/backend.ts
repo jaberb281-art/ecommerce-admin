@@ -13,6 +13,12 @@ function resolveBackendBase(): string {
 /**
  * Authenticated fetch to the backend. Automatically attaches the current
  * user's JWT. Use this in all server actions and server-side queries.
+ *
+ * IMPORTANT: When body is FormData, we must NOT set Content-Type manually.
+ * Node's fetch auto-sets "multipart/form-data; boundary=..." only if no
+ * Content-Type header is present. Spreading a plain headers object blocks
+ * that, breaking file uploads. We use the Headers class instead so the
+ * runtime can still append its own Content-Type alongside Authorization.
  */
 export async function backendFetch(
     path: string,
@@ -22,15 +28,13 @@ export async function backendFetch(
     const base = resolveBackendBase()
     const cleanPath = path.startsWith("/") ? path : `/${path}`
 
-    // When body is FormData, do NOT spread a plain headers object — doing so
-    // prevents the runtime from auto-setting Content-Type with the multipart
-    // boundary, which breaks file uploads. Instead, use the Headers class so
-    // the runtime can still append its own Content-Type alongside Authorization.
     let headers: Headers
     if (init.body instanceof FormData) {
-        headers = new Headers(init.headers)
+        // FormData: only set Authorization — let runtime handle Content-Type + boundary
+        headers = new Headers(init.headers as HeadersInit | undefined)
         if (token) headers.set("Authorization", `Bearer ${token}`)
     } else {
+        // JSON / plain requests: safe to spread
         headers = new Headers({
             ...(init.headers as Record<string, string> ?? {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
