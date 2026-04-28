@@ -58,7 +58,11 @@ async function handler(req: NextRequest) {
     };
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-        options.body = await req.text();
+        // Forward the body as raw bytes via ArrayBuffer. Using await req.text()
+        // would corrupt binary payloads (e.g. multipart/form-data with image
+        // uploads) because it forces a UTF-8 string conversion. ArrayBuffer is
+        // a clean pass-through for both JSON and binary.
+        options.body = await req.arrayBuffer();
     }
 
     const res = await fetch(url, options);
