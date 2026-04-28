@@ -1,6 +1,5 @@
 "use client"
 
-import { uploadImage } from "@/features/products/actions/upload.actions"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTransition, useState } from "react"
@@ -106,17 +105,38 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             const uploadedUrls: string[] = []
 
             for (const file of Array.from(files)) {
-                const formData = new FormData()
-                formData.append("file", file)
-
-                const result = await uploadImage(formData)
-
-                if ("error" in result) {
-                    toast.error(result.error)
+                // Client-side guard: 5 MB matches backend (IMAGE_UPLOAD_OPTIONS).
+                // Catching it here avoids a wasted round-trip + clearer error.
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error(`${file.name} is too large (max 5 MB)`)
                     return
                 }
 
-                uploadedUrls.push(result.url)
+                const formData = new FormData()
+                formData.append("file", file)
+
+                // Upload directly via the admin proxy. Going through a server
+                // action would hit Next.js's 1 MB body size limit and silently
+                // 413 on most photos.
+                const res = await fetch("/api/proxy/products/upload-image", {
+                    method: "POST",
+                    body: formData,
+                    // Do NOT set Content-Type — the browser must set the
+                    // multipart/form-data boundary itself.
+                })
+
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({})) as { message?: string }
+                    toast.error(body.message ?? `Upload failed (${res.status})`)
+                    return
+                }
+
+                const data = await res.json() as { url?: string }
+                if (!data.url) {
+                    toast.error("Upload succeeded but no URL returned")
+                    return
+                }
+                uploadedUrls.push(data.url)
             }
 
             form.setValue("images", [...images, ...uploadedUrls], { shouldValidate: true })
